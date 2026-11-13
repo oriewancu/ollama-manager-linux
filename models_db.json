@@ -1,0 +1,101 @@
+[
+    {
+        "name": "moondream:2b",
+        "min_ram_gb": 4,
+        "min_vram_gb": 2,
+        "size": "1.7 GB",
+        "description": "Model Vision - Suitable for image understanding using light hardware.",
+        "description_id": "Model Vision - Cocok untuk pemahaman gambar menggunakan hardware ringan.",
+        "category": "Vision / Lightweight"
+    },
+    {
+        "name": "qwen2.5-coder:1.5b-instruct",
+        "min_ram_gb": 4,
+        "min_vram_gb": 2,
+        "size": "986 MB",
+        "description": "Model Code - Suitable for basic coding using light hardware.",
+        "description_id": "Model Code - Cocok untuk koding dasar menggunakan hardware ringan.",
+        "category": "Coding / Lightweight"
+    },
+    {
+        "name": "deepseek-r1:1.5b",
+        "min_ram_gb": 4,
+        "min_vram_gb": 2,
+        "size": "1.1 GB",
+        "description": "Model Thinking - Suitable for reasoning and logic tasks using light hardware.",
+        "description_id": "Model Thinking - Cocok untuk penalaran dan logika menggunakan hardware ringan.",
+        "category": "Reasoning / Lightweight"
+    },
+    {
+        "name": "gemma2:2b",
+        "min_ram_gb": 6,
+        "min_vram_gb": 3,
+        "size": "1.6 GB",
+        "description": "Model General - Suitable for general chat and multilingual tasks using light hardware.",
+        "description_id": "Model General - Cocok untuk obrolan umum dan tugas multi-bahasa menggunakan hardware ringan.",
+        "category": "General / Lightweight"
+    },
+    {
+        "name": "llama3.2:1b",
+        "min_ram_gb": 4,
+        "min_vram_gb": 2,
+        "size": "1.3 GB",
+        "description": "Model General - Suitable for daily assistant tasks using ultra-light hardware.",
+        "description_id": "Model General - Cocok untuk asisten harian menggunakan hardware ultra-ringan.",
+        "category": "General / Lightweight"
+    },
+    {
+        "name": "phi3:3.8b",
+        "min_ram_gb": 8,
+        "min_vram_gb": 4,
+        "size": "2.2 GB",
+        "description": "Model Code & Logic - Suitable for intermediate coding and math using medium hardware.",
+        "description_id": "Model Code & Logic - Cocok untuk koding menengah dan matematika menggunakan hardware sedang.",
+        "category": "Coding / Medium"
+    },
+    {
+        "name": "llama3.2:3b",
+        "min_ram_gb": 8,
+        "min_vram_gb": 4,
+        "size": "2.0 GB",
+        "description": "Model General - Suitable for daily assistant and general text using medium hardware.",
+        "description_id": "Model General - Cocok untuk asisten harian dan teks umum menggunakan hardware sedang.",
+        "category": "General / Medium"
+    },
+    {
+        "name": "deepseek-r1:7b",
+        "min_ram_gb": 16,
+        "min_vram_gb": 6,
+        "size": "4.7 GB",
+        "description": "Model Thinking - Suitable for deep analytical reasoning using high performance hardware.",
+        "description_id": "Model Thinking - Cocok untuk penalaran analitis mendalam menggunakan hardware performa tinggi.",
+        "category": "Reasoning / Heavy"
+    },
+    {
+        "name": "llava:7b",
+        "min_ram_gb": 16,
+        "min_vram_gb": 6,
+        "size": "4.7 GB",
+        "description": "Model Vision - Suitable for advanced image and multimodal analysis using high performance hardware.",
+        "description_id": "Model Vision - Cocok untuk analisis gambar & multimodal lanjutan menggunakan hardware performa tinggi.",
+        "category": "Vision / Heavy"
+    },
+    {
+        "name": "minicpm-v:8b",
+        "min_ram_gb": 16,
+        "min_vram_gb": 6,
+        "size": "5.5 GB",
+        "description": "Model Vision - Suitable for open vision and detailed image understanding using high performance hardware.",
+        "description_id": "Model Vision - Cocok untuk vision terbuka dan pemahaman gambar detail menggunakan hardware performa tinggi.",
+        "category": "Vision / Heavy"
+    },
+    {
+        "name": "qwen2.5:7b-instruct",
+        "min_ram_gb": 16,
+        "min_vram_gb": 6,
+        "size": "4.7 GB",
+        "description": "Model General - Suitable for high performance general tasks using high performance hardware.",
+        "description_id": "Model General - Cocok untuk tugas umum performa tinggi menggunakan hardware performa tinggi.",
+        "category": "General / Heavy"
+    }
+]
