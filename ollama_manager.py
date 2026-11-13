@@ -585,16 +585,24 @@ class UniversalOllamaManager:
         self.modal_list.heading("status", text="Status Kompatibilitas", anchor=tk.W)
         self.modal_list.heading("desc", text="Deskripsi Singkat", anchor=tk.W)
 
-        self.modal_list.column("name", width=200, anchor=tk.W)
-        self.modal_list.column("size", width=80, anchor=tk.W)
-        self.modal_list.column("status", width=230, anchor=tk.W)
-        self.modal_list.column("desc", width=420, anchor=tk.W)
+        self.modal_list.column("name", width=220, anchor=tk.W, stretch=False)
+        self.modal_list.column("size", width=100, anchor=tk.W, stretch=False)
+        self.modal_list.column("status", width=240, anchor=tk.W, stretch=False)
+        self.modal_list.column("desc", width=600, anchor=tk.W, stretch=False)
 
-        self.modal_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 4), pady=2)
+        # Gunakan Grid agar Frame / Scrollbar Vertikal & Horizontal tersusun rapi di dalam container
+        list_container.grid_rowconfigure(0, weight=1)
+        list_container.grid_columnconfigure(0, weight=1)
 
-        modal_scroll = ttk.Scrollbar(list_container, orient=tk.VERTICAL, command=self.modal_list.yview)
-        modal_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.modal_list.config(yscrollcommand=modal_scroll.set)
+        self.modal_list.grid(row=0, column=0, sticky="nsew")
+
+        modal_scroll_y = ttk.Scrollbar(list_container, orient=tk.VERTICAL, command=self.modal_list.yview)
+        modal_scroll_y.grid(row=0, column=1, sticky="ns")
+        self.modal_list.config(yscrollcommand=modal_scroll_y.set)
+
+        modal_scroll_x = ttk.Scrollbar(list_container, orient=tk.HORIZONTAL, command=self.modal_list.xview)
+        modal_scroll_x.grid(row=1, column=0, sticky="ew")
+        self.modal_list.config(xscrollcommand=modal_scroll_x.set)
 
         # ================= LOGIC POPULATE DATA & BUTTONS =================
 
