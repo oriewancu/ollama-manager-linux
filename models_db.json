@@ -1,6 +1,6 @@
 [
     {
-        "name": "moondream:2b",
+        "name": "moondream:1.8b",
         "min_ram_gb": 4,
         "min_vram_gb": 2,
         "size": "1.7 GB",
@@ -9,12 +9,39 @@
         "category": "Vision / Lightweight"
     },
     {
+        "name": "qwen3.5:0.8b",
+        "min_ram_gb": 4,
+        "min_vram_gb": 2,
+        "size": "1.2 GB",
+        "description": "Model Tools - Suitable for basic chatbot, translate, simple code using light hardware.",
+        "description_id": "Model Tools - Cocok untuk keperluan dasar chatbot, resume, translate, coding sederhana.",
+        "category": "Coding / Lightweight"
+    },
+    {
         "name": "qwen2.5-coder:1.5b-instruct",
         "min_ram_gb": 4,
         "min_vram_gb": 2,
         "size": "986 MB",
         "description": "Model Code - Suitable for basic coding using light hardware.",
         "description_id": "Model Code - Cocok untuk koding dasar menggunakan hardware ringan.",
+        "category": "Coding / Lightweight"
+    },
+    {
+        "name": "codegemma:2b",
+        "min_ram_gb": 4,
+        "min_vram_gb": 2,
+        "size": "1.6 GB",
+        "description": "Model Code - Suitable for basic coding using light hardware.",
+        "description_id": "Model Code - Cocok untuk koding dasar menggunakan hardware ringan.",
+        "category": "Coding / Lightweight"
+    },
+    {
+        "name": "thxlxn/qwen3.5-sql:0.8b",
+        "min_ram_gb": 4,
+        "min_vram_gb": 2,
+        "size": "1.6 GB",
+        "description": "Model Code - Suitable for text to SQL using light hardware.",
+        "description_id": "Model Code - Cocok untuk spesialis text to SQL hardware ringan.",
         "category": "Coding / Lightweight"
     },
     {
