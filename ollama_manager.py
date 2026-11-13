@@ -329,7 +329,10 @@ class UniversalOllamaManager:
         # Update API tab widgets if they exist
         if hasattr(self, 'api_title_lbl'):
             self.api_title_lbl.config(text=t["api_title"])
-            self.api_desc_lbl.config(text=t["api_desc"])
+            self.api_desc_txt.config(state=tk.NORMAL)
+            self.api_desc_txt.delete("1.0", tk.END)
+            self.api_desc_txt.insert(tk.END, t["api_desc"])
+            self.api_desc_txt.config(state=tk.DISABLED)
             self.btn_ping.config(text=t["btn_ping"])
             
         # Update Hints tab widgets if they exist
@@ -853,8 +856,10 @@ class UniversalOllamaManager:
         self.api_title_lbl = tk.Label(frame, text=t["api_title"], font=("Segoe UI", 12, "bold"), fg="#ffffff", bg="#1e1e2f")
         self.api_title_lbl.pack(anchor=tk.W, pady=5)
 
-        self.api_desc_lbl = tk.Label(frame, text=t["api_desc"], font=("JetBrains Mono", 10), fg="#89b4fa", bg="#11111b", justify=tk.LEFT, padx=12, pady=12)
-        self.api_desc_lbl.pack(fill=tk.X, pady=10)
+        self.api_desc_txt = scrolledtext.ScrolledText(frame, bg="#11111b", fg="#f9e2af", font=("JetBrains Mono", 10), height=8, relief=tk.FLAT, bd=0)
+        self.api_desc_txt.pack(fill=tk.BOTH, expand=True, pady=10)
+        self.api_desc_txt.insert(tk.END, t["api_desc"])
+        self.api_desc_txt.config(state=tk.DISABLED)
 
         self.btn_ping = tk.Button(frame, text=t["btn_ping"], bg="#a6e3a1", fg="#1e1e2f", activebackground="#94e2d5", relief=tk.FLAT, font=("Segoe UI", 9, "bold"), padx=14, pady=6, cursor="hand2", command=self.test_api)
         self.btn_ping.pack(anchor=tk.W)
