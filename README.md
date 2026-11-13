@@ -6,7 +6,7 @@ A lightweight desktop application built with Python and Tkinter, specifically de
 
 ## 🖼️ Application Preview
 
-![Screenshot of Ollama Manager](screenshot.png)
+![Preview of Ollama Manager](preview.png)
 
 ---
 
