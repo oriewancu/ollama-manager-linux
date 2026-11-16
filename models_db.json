@@ -27,15 +27,6 @@
         "category": "Coding / Lightweight"
     },
     {
-        "name": "codegemma:2b",
-        "min_ram_gb": 4,
-        "min_vram_gb": 2,
-        "size": "1.6 GB",
-        "description": "Model Code - Suitable for basic coding using light hardware.",
-        "description_id": "Model Code - Cocok untuk koding dasar menggunakan hardware ringan.",
-        "category": "Coding / Lightweight"
-    },
-    {
         "name": "thxlxn/qwen3.5-sql:0.8b",
         "min_ram_gb": 4,
         "min_vram_gb": 2,
