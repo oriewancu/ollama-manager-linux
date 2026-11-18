@@ -1,5 +1,32 @@
 [
     {
+        "name": "nomic-embed-text:latest",
+        "min_ram_gb": 4,
+        "min_vram_gb": 2,
+        "size": "274 MB",
+        "description": "Embedding Model - as Chat Model for RAG application (Open WebUI or AnythingLLM).",
+        "description_id": "Embedding Model- sebagai Chat Model untuk digunakan di aplikasi RAG (Open WebUI atau AnythingLLM).",
+        "category": "Chat Model"
+    },
+    {
+        "name": "qwen2.5-coder:1.5b-instruct",
+        "min_ram_gb": 4,
+        "min_vram_gb": 2,
+        "size": "986 MB",
+        "description": "Model Code - Suitable for basic coding using light hardware.",
+        "description_id": "Model Code - Cocok untuk koding dasar menggunakan hardware ringan.",
+        "category": "Coding / Lightweight"
+    },
+    {
+        "name": "qwen2.5-coder:3b",
+        "min_ram_gb": 4,
+        "min_vram_gb": 2,
+        "size": "1.7 GB",
+        "description": "Model Code - Suitable for basic coding using mid hardware.",
+        "description_id": "Model Code - Cocok untuk koding dasar menggunakan hardware menengah.",
+        "category": "Coding / Midweight"
+    },
+    {
         "name": "moondream:1.8b",
         "min_ram_gb": 4,
         "min_vram_gb": 2,
@@ -18,13 +45,13 @@
         "category": "Coding / Lightweight"
     },
     {
-        "name": "qwen2.5-coder:1.5b-instruct",
-        "min_ram_gb": 4,
-        "min_vram_gb": 2,
-        "size": "986 MB",
-        "description": "Model Code - Suitable for basic coding using light hardware.",
-        "description_id": "Model Code - Cocok untuk koding dasar menggunakan hardware ringan.",
-        "category": "Coding / Lightweight"
+        "name": "gemma2:2b",
+        "min_ram_gb": 6,
+        "min_vram_gb": 3,
+        "size": "1.6 GB",
+        "description": "Model General - Suitable for general chat and multilingual tasks using light hardware.",
+        "description_id": "Model General - Cocok untuk obrolan umum dan tugas multi-bahasa menggunakan hardware ringan.",
+        "category": "General / Lightweight"
     },
     {
         "name": "thxlxn/qwen3.5-sql:0.8b",
@@ -43,15 +70,6 @@
         "description": "Model Thinking - Suitable for reasoning and logic tasks using light hardware.",
         "description_id": "Model Thinking - Cocok untuk penalaran dan logika menggunakan hardware ringan.",
         "category": "Reasoning / Lightweight"
-    },
-    {
-        "name": "gemma2:2b",
-        "min_ram_gb": 6,
-        "min_vram_gb": 3,
-        "size": "1.6 GB",
-        "description": "Model General - Suitable for general chat and multilingual tasks using light hardware.",
-        "description_id": "Model General - Cocok untuk obrolan umum dan tugas multi-bahasa menggunakan hardware ringan.",
-        "category": "General / Lightweight"
     },
     {
         "name": "llama3.2:1b",
