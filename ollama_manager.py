@@ -110,6 +110,10 @@ class UniversalOllamaManager:
                     "• OpenAI Endpoint : http://localhost:11434/v1\n"
                     "• Format Model    : qwen2.5-coder:1.5b-instruct, gemma2:2b, dll."
                 ),
+                "continue_config_title": "Contoh Konfigurasi Integrasi Continue (config.yaml):",
+                "btn_copy_config": "📋 Salin Config Continue",
+                "config_copied_title": "Disalin",
+                "config_copied_msg": "Contoh konfigurasi Continue berhasil disalin ke clipboard!",
                 "btn_ping": "Uji Ping API Ollama",
                 "hints_title": "Tentang Ollama",
                 "hints_header_desc": (
@@ -153,6 +157,13 @@ class UniversalOllamaManager:
                 "modal_log_title": " Log Pengunduhan Model ",
                 "modal_btn_download": "⬇️ Unduh Model Pilihan",
                 "modal_btn_close": "Tutup",
+                "btn_custom_install": "📥 Install Model",
+                "custom_install_title": "📥 Input & Install Model Baru",
+                "custom_install_prompt": "Masukkan nama model Ollama (contoh: llama3:8b, mistral:7b):",
+                "custom_install_log_title": " Log Proses Download Model ",
+                "custom_install_btn": "⬇️ Mulai Install",
+                "custom_cancel_btn": "❌ Batal",
+                "custom_success_msg": "Model berhasil diinstal!",
                 "ctx_copy": "📋 Salin Nama Model",
                 "ctx_delete": "🗑 Hapus Model",
                 "ctx_chat": "💬 Open Chat In Terminal"
@@ -180,6 +191,10 @@ class UniversalOllamaManager:
                     "• OpenAI Endpoint : http://localhost:11434/v1\n"
                     "• Model Format    : qwen2.5-coder:1.5b-instruct, gemma2:2b, etc."
                 ),
+                "continue_config_title": "Continue Integration Config Example (config.yaml):",
+                "btn_copy_config": "📋 Copy Continue Config",
+                "config_copied_title": "Copied",
+                "config_copied_msg": "Continue config example successfully copied to clipboard!",
                 "btn_ping": "Ping Ollama API",
                 "hints_title": "About Ollama",
                 "hints_header_desc": (
@@ -223,6 +238,13 @@ class UniversalOllamaManager:
                 "modal_log_title": " Model Download Logs ",
                 "modal_btn_download": "⬇️ Download Selected Model",
                 "modal_btn_close": "Close",
+                "btn_custom_install": "📥 Install Model",
+                "custom_install_title": "📥 Input & Install New Model",
+                "custom_install_prompt": "Enter Ollama model name (e.g. llama3:8b, mistral:7b):",
+                "custom_install_log_title": " Model Download Process Log ",
+                "custom_install_btn": "⬇️ Start Install",
+                "custom_cancel_btn": "❌ Cancel",
+                "custom_success_msg": "Model successfully installed!",
                 "ctx_copy": "📋 Copy Model Name",
                 "ctx_delete": "🗑 Delete Model",
                 "ctx_chat": "💬 Open Chat In Terminal"
@@ -363,6 +385,7 @@ class UniversalOllamaManager:
             self.frame_inst.config(text=t["frame_installed"])
             self.btn_refresh.config(text=t["btn_refresh"])
             self.btn_open_store.config(text=t["btn_open_store"])
+            self.btn_custom_install.config(text=t["btn_custom_install"])
         
         if hasattr(self, 'frame_log'):
             self.frame_log.config(text=t["frame_logs"])
@@ -387,7 +410,9 @@ class UniversalOllamaManager:
             self.hints_txt.tag_bind("link", "<Leave>", lambda e: self.hints_txt.config(cursor=""))
             self.hints_txt.tag_bind("link", "<Button-1>", self.on_hints_link_click)
 
-        if hasattr(self, 'pref_title_lbl'):
+        if hasattr(self, 'continue_lbl'):
+            self.continue_lbl.config(text=t["continue_config_title"])
+            self.btn_copy_config.config(text=t["btn_copy_config"])
             self.pref_title_lbl.config(text=t["pref_title"])
             self.pref_lang_lbl.config(text=t["pref_lang_label"])
             self.pref_term_lbl.config(text=t["pref_term_label"])
@@ -581,7 +606,10 @@ class UniversalOllamaManager:
         self.btn_refresh.pack(side=tk.LEFT, padx=(0, 10))
 
         self.btn_open_store = tk.Button(btn_frame, text=t["btn_open_store"], bg="#b4befe", fg="#1e1e2e", activebackground="#cba6f7", relief=tk.FLAT, font=("Segoe UI", 10, "bold"), padx=16, pady=8, cursor="hand2", command=self.open_model_store_modal)
-        self.btn_open_store.pack(side=tk.LEFT)
+        self.btn_open_store.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.btn_custom_install = tk.Button(btn_frame, text=t["btn_custom_install"], bg="#89b4fa", fg="#1e1e2e", activebackground="#74c7ec", relief=tk.FLAT, font=("Segoe UI", 10, "bold"), padx=16, pady=8, cursor="hand2", command=self.open_custom_install_modal)
+        self.btn_custom_install.pack(side=tk.LEFT)
 
         # Bottom section: Live Terminal Output Log
         self.frame_log = tk.LabelFrame(self.tab_models, text=t["frame_logs"], fg="#cdd6f4", bg="#1e1e2f", font=("Segoe UI", 10, "bold"), padx=12, pady=12)
@@ -590,6 +618,120 @@ class UniversalOllamaManager:
         self.log_txt = scrolledtext.ScrolledText(self.frame_log, bg="#11111b", fg="#89b4fa", font=("JetBrains Mono", 9), height=10, relief=tk.FLAT, bd=0)
         self.log_txt.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
         self.log_txt.config(state=tk.DISABLED)
+
+    def open_custom_install_modal(self):
+        t = self.texts[self.lang]
+        modal = tk.Toplevel(self.root)
+        modal.title(t["custom_install_title"])
+        modal.geometry("700x500")
+        modal.configure(bg="#1e1e2f")
+        modal.transient(self.root)
+        modal.grab_set()
+
+        # Top Frame for Model Name Input
+        input_frame = tk.Frame(modal, bg="#1e1e2f", padx=20, pady=15)
+        input_frame.pack(fill=tk.X)
+
+        lbl_prompt = tk.Label(input_frame, text=t["custom_install_prompt"], font=("Segoe UI", 10, "bold"), fg="#ffffff", bg="#1e1e2f")
+        lbl_prompt.pack(anchor=tk.W, pady=(0, 5))
+
+        entry_frame = tk.Frame(input_frame, bg="#1e1e2f")
+        entry_frame.pack(fill=tk.X)
+
+        model_entry = tk.Entry(entry_frame, font=("JetBrains Mono", 11), bg="#313244", fg="#ffffff", insertbackground="white", relief=tk.FLAT)
+        model_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=6, padx=(0, 10))
+        model_entry.focus()
+
+        # Bottom Action / Buttons Frame
+        action_frame = tk.Frame(modal, bg="#181825", padx=15, pady=10)
+        action_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+        # Log Frame
+        log_frame = tk.LabelFrame(modal, text=t["custom_install_log_title"], fg="#cdd6f4", bg="#1e1e2f", font=("Segoe UI", 10, "bold"), padx=10, pady=10)
+        log_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=20, pady=10)
+
+        log_txt = scrolledtext.ScrolledText(log_frame, bg="#11111b", fg="#89b4fa", font=("JetBrains Mono", 9), relief=tk.FLAT, bd=0)
+        log_txt.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+        log_txt.config(state=tk.DISABLED)
+
+        def log_to_custom_modal(msg):
+            def _w():
+                log_txt.config(state=tk.NORMAL)
+                log_txt.insert(tk.END, msg + "\n")
+                log_txt.see(tk.END)
+                log_txt.config(state=tk.DISABLED)
+            modal.after(0, _w)
+
+        # Cancellation flag/process reference holder
+        proc_holder = {"process": None, "cancelled": False}
+
+        def start_custom_download():
+            model_name = model_entry.get().strip()
+            if not model_name:
+                messagebox.showwarning(t["warning"], "Masukkan nama model dengan benar!", parent=modal)
+                return
+
+            btn_start.config(state=tk.DISABLED)
+            model_entry.config(state=tk.DISABLED)
+
+            def worker():
+                log_to_custom_modal(f"[*] Starting download / pull for custom model: {model_name}...")
+                
+                cmd = f"ollama pull {model_name}"
+                process = subprocess.Popen(
+                    cmd,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1
+                )
+                proc_holder["process"] = process
+
+                ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+                
+                for line in iter(process.stdout.readline, ''):
+                    if proc_holder["cancelled"]:
+                        break
+                    clean_line = ansi_escape.sub('', line).replace('\r', '').strip()
+                    if clean_line:
+                        log_to_custom_modal(f"    {clean_line}")
+                
+                process.wait()
+
+                if proc_holder["cancelled"]:
+                    log_to_custom_modal("[!] Proses download dibatalkan oleh pengguna.")
+                    return
+
+                if process.returncode == 0:
+                    log_to_custom_modal(f"[+] Model {model_name} berhasil diunduh!")
+                    messagebox.showinfo(t["success_title"], f"{t['custom_success_msg']}\n\n{model_name}", parent=modal)
+                    self.refresh_all_data()
+                    modal.destroy()
+                else:
+                    log_to_custom_modal(f"[!] Gagal mengunduh model {model_name}")
+                    messagebox.showerror(t["error_title"], f"{t['error_msg']}: {model_name}", parent=modal)
+                    btn_start.config(state=tk.NORMAL)
+                    model_entry.config(state=tk.NORMAL)
+
+            threading.Thread(target=worker, daemon=True).start()
+
+        def cancel_action():
+            if proc_holder["process"] and proc_holder["process"].poll() is None:
+                proc_holder["cancelled"] = True
+                try:
+                    proc_holder["process"].terminate()
+                except:
+                    pass
+            modal.destroy()
+
+        btn_start = tk.Button(entry_frame, text=t["custom_install_btn"], bg="#a6e3a1", fg="#1e1e2e", activebackground="#94e2d5", relief=tk.FLAT, font=("Segoe UI", 10, "bold"), padx=14, pady=6, cursor="hand2", command=start_custom_download)
+        btn_start.pack(side=tk.RIGHT)
+
+        btn_cancel = tk.Button(action_frame, text=t["custom_cancel_btn"], bg="#f38ba8", fg="#1e1e2e", activebackground="#eba0ac", relief=tk.FLAT, font=("Segoe UI", 10, "bold"), padx=16, pady=8, cursor="hand2", command=cancel_action)
+        btn_cancel.pack(side=tk.RIGHT, padx=5)
+
+        modal.protocol("WM_DELETE_WINDOW", cancel_action)
 
     def open_model_store_modal(self):
         t = self.texts[self.lang]
@@ -859,15 +1001,79 @@ class UniversalOllamaManager:
         frame.pack(fill=tk.BOTH, expand=True)
 
         self.api_title_lbl = tk.Label(frame, text=t["api_title"], font=("Segoe UI", 12, "bold"), fg="#ffffff", bg="#1e1e2f")
-        self.api_title_lbl.pack(anchor=tk.W, pady=5)
+        self.api_title_lbl.pack(anchor=tk.W, pady=(0, 12))
 
-        self.api_desc_txt = scrolledtext.ScrolledText(frame, bg="#11111b", fg="#f9e2af", font=("JetBrains Mono", 10), height=8, relief=tk.FLAT, bd=0)
-        self.api_desc_txt.pack(fill=tk.BOTH, expand=True, pady=10)
+        # Main Split Container using 2 Equal Columns (Cards)
+        api_container = tk.Frame(frame, bg="#1e1e2f")
+        api_container.pack(fill=tk.BOTH, expand=True)
+        api_container.grid_columnconfigure(0, weight=1, uniform="group1")
+        api_container.grid_columnconfigure(1, weight=1, uniform="group1")
+        api_container.grid_rowconfigure(0, weight=1)
+
+        # Left Card: Universal API Info & Endpoint Details
+        left_card = tk.LabelFrame(api_container, text=" Endpoint Lokal & Keterangan ", fg="#a6e3a1", bg="#1e1e2f", font=("Segoe UI", 10, "bold"), padx=15, pady=15)
+        left_card.grid(row=0, column=0, sticky="nsew", padx=(0, 8), pady=0)
+
+        self.api_desc_txt = scrolledtext.ScrolledText(left_card, bg="#11111b", fg="#f9e2af", font=("JetBrains Mono", 10), height=14, relief=tk.FLAT, bd=0)
+        self.api_desc_txt.pack(fill=tk.BOTH, expand=True, pady=(0, 12))
         self.api_desc_txt.insert(tk.END, t["api_desc"])
         self.api_desc_txt.config(state=tk.DISABLED)
 
-        self.btn_ping = tk.Button(frame, text=t["btn_ping"], bg="#a6e3a1", fg="#1e1e2e", activebackground="#94e2d5", relief=tk.FLAT, font=("Segoe UI", 9, "bold"), padx=14, pady=6, cursor="hand2", command=self.test_api)
+        self.btn_ping = tk.Button(left_card, text=t["btn_ping"], bg="#a6e3a1", fg="#1e1e2e", activebackground="#94e2d5", relief=tk.FLAT, font=("Segoe UI", 10, "bold"), padx=16, pady=8, cursor="hand2", command=self.test_api)
         self.btn_ping.pack(anchor=tk.W)
+
+        # Right Card: Continue Configuration (YAML)
+        right_card = tk.LabelFrame(api_container, text=" Konfigurasi Integrasi Continue (config.yaml) ", fg="#b4befe", bg="#1e1e2f", font=("Segoe UI", 10, "bold"), padx=15, pady=15)
+        right_card.grid(row=0, column=1, sticky="nsew", padx=(8, 0), pady=0)
+
+        continue_yaml_content = (
+            "name: Ollama Local\n"
+            "version: 1.0.0\n"
+            "schema: v1\n"
+            "models:\n"
+            "  - name: Local Qwen3.5 4B (Debug & Trace)\n"
+            "    provider: ollama\n"
+            "    model: qwen3.5:4b\n"
+            "    apiBase: http://127.0.0.1:11434\n"
+            "    roles:\n"
+            "      - chat\n"
+            "      - edit\n"
+            "      - apply\n"
+            "    capabilities:\n"
+            "      - tool_use\n"
+            "    defaultCompletionOptions:\n"
+            "      contextLength: 8192\n"
+            "      temperature: 0.2\n"
+            "  - name: Local Qwen2.5 Coder 3B (Fast Edit)\n"
+            "    provider: ollama\n"
+            "    model: qwen2.5-coder:3b\n"
+            "    apiBase: http://127.0.0.1:11434\n"
+            "    roles:\n"
+            "      - chat\n"
+            "      - edit\n"
+            "      - apply\n"
+            "    defaultCompletionOptions:\n"
+            "      contextLength: 8192\n"
+            "      temperature: 0.1\n"
+            "    requestOptions:\n"
+            "      extraBodyProperties:\n"
+            "        tools: []"
+        )
+
+        self.continue_txt = scrolledtext.ScrolledText(right_card, bg="#11111b", fg="#89b4fa", font=("JetBrains Mono", 9), height=14, relief=tk.FLAT, bd=0)
+        self.continue_txt.pack(fill=tk.BOTH, expand=True, pady=(0, 12))
+        self.continue_txt.insert(tk.END, continue_yaml_content)
+        self.continue_txt.config(state=tk.DISABLED)
+
+        def copy_continue_config():
+            self.root.clipboard_clear()
+            self.root.clipboard_append(continue_yaml_content)
+            self.root.update()
+            self.log_to_terminal("[+] Copied Continue config example to clipboard.")
+            messagebox.showinfo(t["config_copied_title"], t["config_copied_msg"])
+
+        self.btn_copy_config = tk.Button(right_card, text=t["btn_copy_config"], bg="#b4befe", fg="#1e1e2e", activebackground="#cba6f7", relief=tk.FLAT, font=("Segoe UI", 10, "bold"), padx=16, pady=8, cursor="hand2", command=copy_continue_config)
+        self.btn_copy_config.pack(anchor=tk.W)
 
     def test_api(self):
         import urllib.request
