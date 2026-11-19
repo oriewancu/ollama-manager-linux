@@ -96,7 +96,7 @@ class UniversalOllamaManager:
                 "tab_pref": "Preferences ",
                 "header_title": "Ollama & Hardware Compatibility Hub",
                 "btn_install": "📥 Install Ollama",
-                "btn_open_store": "🚀 Buka Toko & Install Model",
+                "btn_open_store": "🚀 Rekomendasi Install Model",
                 "frame_installed": " Model yang Sudah Terinstal (Installed) ",
                 "btn_refresh": "🔄 Muat Ulang",
                 "copied_title": "Disalin",
@@ -154,7 +154,7 @@ class UniversalOllamaManager:
                 "modal_btn_download": "⬇️ Unduh Model Pilihan",
                 "modal_btn_close": "Tutup",
                 "ctx_copy": "📋 Salin Nama Model",
-                "ctx_delete": "🗑 Hapus Model Terpilih",
+                "ctx_delete": "🗑 Hapus Model",
                 "ctx_chat": "💬 Open Chat In Terminal"
             },
             "en": {
@@ -166,7 +166,7 @@ class UniversalOllamaManager:
                 "tab_pref": "Preferences ",
                 "header_title": "Ollama & Hardware Compatibility Hub",
                 "btn_install": "📥 Install Ollama",
-                "btn_open_store": "🚀 Open Model Store & Installer",
+                "btn_open_store": "🚀 Install Recommendation Model",
                 "frame_installed": " Installed Models ",
                 "btn_refresh": "🔄 Refresh List",
                 "copied_title": "Copied",
@@ -224,7 +224,7 @@ class UniversalOllamaManager:
                 "modal_btn_download": "⬇️ Download Selected Model",
                 "modal_btn_close": "Close",
                 "ctx_copy": "📋 Copy Model Name",
-                "ctx_delete": "🗑 Delete Selected Model",
+                "ctx_delete": "🗑 Delete Model",
                 "ctx_chat": "💬 Open Chat In Terminal"
             }
         }
@@ -652,7 +652,7 @@ class UniversalOllamaManager:
         self.modal_list.column("name", width=220, anchor=tk.W, stretch=False)
         self.modal_list.column("size", width=100, anchor=tk.W, stretch=False)
         self.modal_list.column("status", width=240, anchor=tk.W, stretch=False)
-        self.modal_list.column("desc", width=600, anchor=tk.W, stretch=False)
+        self.modal_list.column("desc", width=1200, anchor=tk.W, stretch=False)
 
         list_container.grid_rowconfigure(0, weight=1)
         list_container.grid_columnconfigure(0, weight=1)
@@ -749,7 +749,10 @@ class UniversalOllamaManager:
 
             threading.Thread(target=worker, daemon=True).start()
 
-        btn_install = ttk.Button(action_frame, text=t["modal_btn_download"], command=install_selected_model)
+        btn_ins_frame = tk.Frame(self.frame_inst, bg="#1e1e2f")
+        btn_ins_frame.pack(fill=tk.X, pady=(10, 0))
+
+        btn_install = tk.Button(action_frame, text=t["modal_btn_download"], bg="#a6e3a1", fg="#1e1e2e", activebackground="#94e2d5", relief=tk.FLAT, font=("Segoe UI", 10, "bold"), padx=16, pady=8, cursor="hand2", command=install_selected_model)
         btn_install.pack(side=tk.LEFT, padx=(0, 10))
 
         btn_close = ttk.Button(action_frame, text=t["modal_btn_close"], command=modal.destroy)
@@ -937,7 +940,7 @@ class UniversalOllamaManager:
         btn_frame = tk.Frame(frame, bg="#1e1e2f")
         btn_frame.pack(fill=tk.X, pady=(25, 0))
 
-        self.pref_save_btn = ttk.Button(btn_frame, text=t["pref_save_btn"], command=self.save_preferences_action)
+        self.pref_save_btn = tk.Button(btn_frame, text=t["pref_save_btn"], bg="#a6e3a1", fg="#1e1e2e", activebackground="#94e2d5", relief=tk.FLAT, font=("Segoe UI", 10, "bold"), padx=16, pady=8, cursor="hand2", command=self.save_preferences_action)
         self.pref_save_btn.pack(anchor=tk.W)
 
     def save_preferences_action(self):
