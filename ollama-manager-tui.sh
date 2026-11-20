@@ -1250,15 +1250,23 @@ open_local_chat() {
     fi
 
     leave_tui
-    printf "%s\033[H\033[2J" "${BG_MAIN}"
-    echo -e "${FG_CYAN}${BOLD}╭──────────────────────────────────────────────────────────────────────────────────────╮${RST}"
-    echo -e "${FG_CYAN}${BOLD}│ ◈ NEURAL STREAMING SESSION  ${FG_DIM}•  ${FG_VIOLET}MODEL: ${FG_TEXT}${model_name}${RST}"
-    echo -e "${FG_CYAN}${BOLD}│ ${FG_MUTED}$(t chat_cmds)${RST}"
-    echo -e "${FG_CYAN}${BOLD}╰──────────────────────────────────────────────────────────────────────────────────────╯${RST}\n"
+
+    draw_chat_header() {
+        printf "%s\033[H\033[2J\033[3J" "${BG_MAIN}"
+        echo -e "${FG_CYAN}${BOLD}╭──────────────────────────────────────────────────────────────────────────────────────╮${RST}"
+        echo -e "${FG_CYAN}${BOLD}│ ◈ NEURAL STREAMING SESSION  ${FG_DIM}•  ${FG_VIOLET}MODEL: ${FG_TEXT}${model_name}${RST}"
+        echo -e "${FG_CYAN}${BOLD}│ ${FG_MUTED}$(t chat_cmds)${RST}"
+        echo -e "${FG_CYAN}${BOLD}╰──────────────────────────────────────────────────────────────────────────────────────╯${RST}\n"
+    }
+
+    draw_chat_header
+
+    mkdir -p "${TMP_DIR}"
+    rm -f "${TMP_DIR}"/code_*.txt
 
     local history_json="[]"
     local turn_count=0
-    local last_code_count=0
+    local total_code_count=0
     local last_code_langs=()
 
     local in_code=0
@@ -1266,6 +1274,61 @@ open_local_chat() {
     local wrap_w=86
     local tick=$'\x60'
     local fence="${tick}${tick}${tick}"
+
+    # --- Handler Autocomplete Slash Command ---
+    _chat_slash_complete() {
+        local line="${READLINE_LINE}"
+        local point="${READLINE_POINT}"
+        local prefix="${line:0:${point}}"
+
+        # Hanya aktif jika input diawali '/'
+        [[ "${prefix}" != /* ]] && return
+
+        # Kumpulkan semua kandidat command yang tersedia saat ini
+        local candidates=("/copy" "/last" "/clear" "/exit" "/quit")
+        if [[ ${total_code_count} -gt 0 ]]; then
+            candidates+=("/copy last" "/copy all")
+            for ((i = 1; i <= total_code_count; i++)); do
+                candidates+=("/copy ${i}")
+            done
+        fi
+
+        # Filter kandidat yang cocok dengan ketikan saat ini
+        local matches=()
+        for cmd in "${candidates[@]}"; do
+            if [[ "${cmd}" == "${prefix}"* ]]; then
+                matches+=("${cmd}")
+            fi
+        done
+
+        if [[ ${#matches[@]} -eq 1 ]]; then
+            # Langsung lengkapi jika hanya 1 kecocokan
+            READLINE_LINE="${matches[0]}"
+            READLINE_POINT=${#READLINE_LINE}
+        elif [[ ${#matches[@]} -gt 1 ]]; then
+            # Cari common prefix terpanjang
+            local common="${matches[0]}"
+            for m in "${matches[@]:1}"; do
+                while [[ "${m}" != "${common}"* && -n "${common}" ]]; do
+                    common="${common%?}"
+                done
+            done
+
+            if [[ ${#common} -gt ${#prefix} ]]; then
+                READLINE_LINE="${common}"
+                READLINE_POINT=${#READLINE_LINE}
+            else
+                # Tampilkan daftar opsi di bawah prompt lalu gambar ulang prompt
+                printf "\n%s  %s%s\n" "${FG_MUTED}" "${matches[*]}" "${RST}"
+                printf "%s%s╭─ YOU %s[%d]%s\n%s╰─▸ %s%s" \
+                    "${FG_VIOLET}" "${BOLD}" "${FG_MUTED}" "$((turn_count + 1))" "${RST}" \
+                    "${FG_VIOLET}" "${RST}" "${READLINE_LINE}"
+            fi
+        fi
+    }
+
+    # Bind tombol Tab ke fungsi autocomplete selama sesi chat
+    bind -x '"\t": _chat_slash_complete' 2>/dev/null || true
 
     render_chat_line() {
         local raw_line="${1%$'\r'}"
@@ -1319,9 +1382,16 @@ open_local_chat() {
     }
 
     while true; do
-        printf "%s%s╭─ YOU %s[%d]%s\n%s╰─▸ %s" "${FG_VIOLET}" "${BOLD}" "${FG_MUTED}" "$((turn_count + 1))" "${RST}" "${FG_VIOLET}" "${RST}"
+        printf "%s%s╭─ YOU %s[%d]%s\n" "${FG_VIOLET}" "${BOLD}" "${FG_MUTED}" "$((turn_count + 1))" "${RST}"
+        local prompt_line
+        prompt_line="$(printf "%s╰─▸ %s" "${FG_VIOLET}" "${RST}")"
+
         local user_input=""
-        IFS= read -r user_input || break
+        # -e mengaktifkan Readline (panah kiri/kanan, history, dan Tab autocomplete)
+        IFS= read -e -r -p "${prompt_line}" user_input || break
+
+        # Simpan ke readline history sesi agar panah atas/bawah berfungsi
+        [[ -n "${user_input}" ]] && history -s "${user_input}"
 
         [[ -z "${user_input}" ]] && continue
         case "${user_input}" in
@@ -1331,7 +1401,14 @@ open_local_chat() {
         if [[ "${user_input}" == "/clear" ]]; then
             history_json="[]"
             turn_count=0
-            last_code_count=0
+            total_code_count=0
+            code_idx=0
+            in_code=0
+            last_code_langs=()
+            rm -f "${TMP_DIR}"/code_*.txt
+            : > "${TMP_DIR}/last_reply.txt"
+            : > "${TMP_DIR}/last_stats.txt"
+            draw_chat_header
             echo -e "${FG_AMBER}$(t chat_cleared)${RST}\n"
             continue
         fi
@@ -1356,18 +1433,18 @@ open_local_chat() {
                 local arg="${user_input#/copy}"
                 arg="$(echo "${arg}" | xargs)"
 
-                if [[ ${last_code_count} -eq 0 ]]; then
+                if [[ ${total_code_count} -eq 0 ]]; then
                     echo -e "${FG_AMBER}$(t chat_no_code)${RST}\n"
                     continue
                 fi
 
                 if [[ "${arg}" == "all" ]]; then
                     local all_code=""
-                    for ((c = 1; c <= last_code_count; c++)); do
+                    for ((c = 1; c <= total_code_count; c++)); do
                         [[ -f "${TMP_DIR}/code_${c}.txt" ]] && all_code+="$(cat "${TMP_DIR}/code_${c}.txt")"$'\n\n'
                     done
                     if copy_to_clipboard "${all_code}"; then
-                        echo -e "${FG_GREEN}$(t chat_copy_all_1)${last_code_count}$(t chat_copy_all_2)${RST}\n"
+                        echo -e "${FG_GREEN}$(t chat_copy_all_1)${total_code_count}$(t chat_copy_all_2)${RST}\n"
                     else
                         echo -e "${FG_AMBER}$(t chat_no_clip)${RST}\n"
                     fi
@@ -1375,11 +1452,13 @@ open_local_chat() {
                 fi
 
                 local target_idx=1
-                if [[ -n "${arg}" ]]; then
-                    if [[ "${arg}" =~ ^[0-9]+$ && "${arg}" -ge 1 && "${arg}" -le ${last_code_count} ]]; then
+                if [[ "${arg}" == "last" ]]; then
+                    target_idx=${total_code_count}
+                elif [[ -n "${arg}" ]]; then
+                    if [[ "${arg}" =~ ^[0-9]+$ && "${arg}" -ge 1 && "${arg}" -le ${total_code_count} ]]; then
                         target_idx=${arg}
                     else
-                        echo -e "${FG_RED}$(t chat_bad_idx) ${last_code_count}.${RST}\n"
+                        echo -e "${FG_RED}$(t chat_bad_idx) ${total_code_count}.${RST}\n"
                         continue
                     fi
                 fi
@@ -1420,15 +1499,14 @@ open_local_chat() {
         printf "%s%s╭─ AI // %s%s\n" "${FG_CYAN}" "${BOLD}" "${model_name}" "${RST}"
 
         mkdir -p "${TMP_DIR}"
-        rm -f "${TMP_DIR}"/code_*.txt
         local reply_file="${TMP_DIR}/last_reply.txt"
         local stats_file="${TMP_DIR}/last_stats.txt"
         : > "${reply_file}"
         : > "${stats_file}"
 
         in_code=0
-        code_idx=0
-        last_code_langs=()
+        code_idx=${total_code_count}
+        local turn_code_added=0
         local line_buf=""
 
         while IFS= read -r line; do
@@ -1465,11 +1543,14 @@ open_local_chat() {
                 "${FG_CYAN}" "${FG_MUTED}" "$(t chat_code_hint_pre)" "${code_idx}" "$(t chat_code_hint_post)" "${RST}"
         fi
 
-        last_code_count=${code_idx}
+        turn_code_added=$((code_idx - total_code_count))
+        total_code_count=${code_idx}
 
         local code_hint=""
-        if [[ ${last_code_count} -gt 0 ]]; then
-            code_hint="  ${FG_DIM}│  ${FG_VIOLET}${last_code_count} $(t chat_blocks_ready)"
+        if [[ ${turn_code_added} -gt 0 ]]; then
+            code_hint="  ${FG_DIM}│  ${FG_VIOLET}+${turn_code_added} code (total #1..#${total_code_count})"
+        elif [[ ${total_code_count} -gt 0 ]]; then
+            code_hint="  ${FG_DIM}│  ${FG_MUTED}saved #1..#${total_code_count}"
         fi
 
         if [[ -s "${stats_file}" ]]; then
@@ -1485,6 +1566,8 @@ open_local_chat() {
         fi
     done
 
+    # Kembalikan binding Tab standar sebelum kembali ke TUI
+    bind '"\t": complete' 2>/dev/null || true
     enter_tui
 }
 
