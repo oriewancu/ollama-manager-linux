@@ -242,12 +242,25 @@ declare -A I18N_ID=(
     ["api_yaml_err_title"]="CLIPBOARD TIDAK TERSEDIA"
     ["api_yaml_err_body"]="Install 'xclip' atau 'wl-copy' untuk menyalin otomatis."
 
-    ["pref_sub"]="PREFERENSI SISTEM // BAHASA ANTARMUKA"
-    ["pref_hdr"]="◈ PILIH BAHASA ANTARMUKA"
-    ["pref_cfg"]="  Konfigurasi:"
-    ["pref_hint"]="[↑/↓] Pilih   [1/2] Pintasan   [Enter] Simpan Bahasa   [Esc/Q] Kembali"
-    ["pref_saved_title"]="BAHASA DIPERBARUI"
+    ["pref_sub"]="PREFERENSI SISTEM // BAHASA & CONTEXT WINDOW"
+    ["pref_hdr"]="◈ KONFIGURASI SISTEM (config.json)"
+    ["pref_cfg"]="  File Konfigurasi:"
+    ["pref_ctx_item"]="Atur Context Window (num_ctx)"
+    ["pref_hint"]="[↑/↓] Navigasi   [1-3] Pintasan   [Enter] Pilih   [Esc/Q] Kembali"
+    ["pref_saved_title"]="KONFIGURASI DIPERBARUI"
     ["pref_saved_id"]="✓ Bahasa antarmuka diubah ke Bahasa Indonesia (ID)."
+
+    ["ctx_sub"]="PREFERENSI SISTEM // CONTEXT WINDOW (num_ctx)"
+    ["ctx_hdr"]="◈ PILIH UKURAN CONTEXT WINDOW (num_ctx)"
+    ["ctx_custom_opt"]="Input Nilai Kustom (Custom Token Size)..."
+    ["ctx_default_opt"]="Bawaan Model (Hapus num_ctx dari config)"
+    ["ctx_hint"]="[↑/↓] Pilih   [1-7] Pintasan   [Enter] Simpan   [Esc/Q] Kembali"
+    ["ctx_prompt_title"]="ATUR NILAI NUM_CTX KUSTOM"
+    ["ctx_prompt_body"]="Masukkan jumlah token context window (contoh: 4096, 8192, 16384, 32768).\nSemakin besar nilai num_ctx, semakin banyak RAM/VRAM yang digunakan."
+    ["ctx_invalid_title"]="INPUT TIDAK VALID"
+    ["ctx_invalid_body"]="✕ Nilai num_ctx harus berupa angka bulat positif (minimal 128)."
+    ["ctx_saved_ok"]="✓ Nilai num_ctx berhasil diperbarui menjadi:"
+    ["ctx_saved_def"]="✓ Parameter num_ctx dihapus (menggunakan default model)."
 
     ["main_matrix"]="◈ MATRIKS PERINTAH NEURAL"
     ["main_install"]="INSTALL OLLAMA RUNTIME SEKARANG (Wajib)"
@@ -257,7 +270,7 @@ declare -A I18N_ID=(
     ["main_m3"]="Unduh Model Kustom — Tarik Tag dari Ollama Library"
     ["main_m4"]="Kontrol Daya Engine — Start / Stop Ollama Daemon"
     ["main_m5"]="Gerbang Agen & API — 9Router, Open WebUI & Continue.dev"
-    ["main_m6"]="Preferensi Sistem — Bahasa Antarmuka (ID / EN)"
+    ["main_m6"]="Preferensi Sistem — Bahasa & Context Window (num_ctx)"
     ["main_m7"]="Sinkronisasi Telemetri — Muat Ulang Status Hardware & Service"
     ["main_m8"]="Keluar dari Command Center"
     ["main_hint_1"]="[↑/↓] Navigasi   [Enter] Jalankan   [1-"
@@ -418,12 +431,26 @@ declare -A I18N_EN=(
     ["api_yaml_err_title"]="CLIPBOARD UNAVAILABLE"
     ["api_yaml_err_body"]="Install 'xclip' or 'wl-copy' for automatic clipboard copy."
 
-    ["pref_sub"]="SYSTEM PREFERENCES // INTERFACE LOCALE"
-    ["pref_hdr"]="◈ SELECT INTERFACE LANGUAGE"
-    ["pref_cfg"]="  Config:"
-    ["pref_hint"]="[↑/↓] Toggle   [1/2] Hotkey   [Enter] Save Locale   [Esc/Q] Back"
-    ["pref_saved_title"]="LOCALE UPDATED"
+    ["pref_sub"]="SYSTEM PREFERENCES // LOCALE & CONTEXT WINDOW"
+    ["pref_hdr"]="◈ SYSTEM CONFIGURATION (config.json)"
+    ["pref_cfg"]="  Config File:"
+    ["pref_ctx_item"]="Configure Context Window (num_ctx)"
+    ["pref_hint"]="[↑/↓] Navigate   [1-3] Hotkey   [Enter] Select   [Esc/Q] Back"
+    ["pref_saved_title"]="CONFIGURATION UPDATED"
+    ["pref_saved_id"]="✓ Interface language switched to Bahasa Indonesia (ID)."
     ["pref_saved_en"]="✓ Interface language switched to English (EN)."
+
+    ["ctx_sub"]="SYSTEM PREFERENCES // CONTEXT WINDOW (num_ctx)"
+    ["ctx_hdr"]="◈ SELECT CONTEXT WINDOW SIZE (num_ctx)"
+    ["ctx_custom_opt"]="Custom Token Size Input..."
+    ["ctx_default_opt"]="Model Default (Remove num_ctx from config)"
+    ["ctx_hint"]="[↑/↓] Select   [1-7] Hotkey   [Enter] Save   [Esc/Q] Back"
+    ["ctx_prompt_title"]="SET CUSTOM NUM_CTX VALUE"
+    ["ctx_prompt_body"]="Enter context window token count (e.g., 4096, 8192, 16384, 32768).\nLarger num_ctx values require more RAM/VRAM."
+    ["ctx_invalid_title"]="INVALID INPUT"
+    ["ctx_invalid_body"]="✕ num_ctx value must be a positive integer (minimum 128)."
+    ["ctx_saved_ok"]="✓ num_ctx updated to:"
+    ["ctx_saved_def"]="✓ num_ctx parameter removed (using model default)."
 
     ["main_matrix"]="◈ NEURAL COMMAND MATRIX"
     ["main_install"]="INSTALL OLLAMA RUNTIME NOW (Required)"
@@ -433,7 +460,7 @@ declare -A I18N_EN=(
     ["main_m3"]="Custom Registry Pull — Download Tag from Ollama Library"
     ["main_m4"]="Engine Power Control — Start / Stop Ollama Daemon"
     ["main_m5"]="Agent & API Gateway — 9Router, Open WebUI & Continue.dev"
-    ["main_m6"]="System Preferences — Interface Language (ID / EN)"
+    ["main_m6"]="System Preferences — Language & Context Window (num_ctx)"
     ["main_m7"]="Sync Telemetry — Refresh Hardware & Service Status"
     ["main_m8"]="Exit Command Center"
     ["main_hint_1"]="[↑/↓] Navigate   [Enter] Execute   [1-"
@@ -524,7 +551,13 @@ EOF
     fi
 
     if [[ ! -f "${CONFIG_PATH}" ]]; then
-        printf '{"lang": "id"}\n' > "${CONFIG_PATH}"
+        cat > "${CONFIG_PATH}" << 'EOF'
+{
+  "lang": "id",
+  "terminal": "gnome-terminal",
+  "num_ctx": 8192
+}
+EOF
     fi
     CURRENT_LANG="$(get_lang)"
 }
@@ -553,12 +586,74 @@ set_lang() {
         if updated_json="$(jq --arg l "${new_lang}" '.lang = $l' "${CONFIG_PATH}" 2>/dev/null)" && [[ -n "${updated_json}" ]]; then
             printf "%s\n" "${updated_json}" > "${CONFIG_PATH}"
         else
-            printf '{"lang": "%s"}\n' "${new_lang}" > "${CONFIG_PATH}"
+            printf '{\n  "lang": "%s"\n}\n' "${new_lang}" > "${CONFIG_PATH}"
+        fi
+    elif [[ -f "${CONFIG_PATH}" ]]; then
+        if grep -Eq '"lang"[[:space:]]*:' "${CONFIG_PATH}"; then
+            sed -i -E 's/("lang"[[:space:]]*:[[:space:]]*")[^"]*(")/\1'"${new_lang}"'\2/' "${CONFIG_PATH}"
+        else
+            printf '{\n  "lang": "%s"\n}\n' "${new_lang}" > "${CONFIG_PATH}"
         fi
     else
-        printf '{"lang": "%s"}\n' "${new_lang}" > "${CONFIG_PATH}"
+        printf '{\n  "lang": "%s"\n}\n' "${new_lang}" > "${CONFIG_PATH}"
     fi
     CURRENT_LANG="${new_lang}"
+}
+
+get_num_ctx() {
+    local val=""
+    if [[ -f "${CONFIG_PATH}" ]]; then
+        if [[ "${HAS_JQ}" -eq 1 ]]; then
+            local raw
+            raw="$(jq -r '.num_ctx // empty' "${CONFIG_PATH}" 2>/dev/null || true)"
+            [[ "${raw}" =~ ^[0-9]+$ && "${raw}" -gt 0 ]] && val="${raw}"
+        else
+            local raw
+            raw="$(grep -Eo '"num_ctx"[[:space:]]*:[[:space:]]*[0-9]+' "${CONFIG_PATH}" | grep -Eo '[0-9]+' | head -n 1)"
+            [[ "${raw}" =~ ^[0-9]+$ && "${raw}" -gt 0 ]] && val="${raw}"
+        fi
+    fi
+    printf "%s" "${val}"
+}
+
+set_num_ctx() {
+    local new_ctx="${1:-}"
+
+    if [[ "${HAS_JQ}" -eq 1 && -f "${CONFIG_PATH}" ]]; then
+        local updated_json=""
+        if [[ -z "${new_ctx}" ]]; then
+            updated_json="$(jq 'del(.num_ctx)' "${CONFIG_PATH}" 2>/dev/null || true)"
+        else
+            updated_json="$(jq --argjson c "${new_ctx}" '.num_ctx = $c' "${CONFIG_PATH}" 2>/dev/null || true)"
+        fi
+        if [[ -n "${updated_json}" ]]; then
+            printf "%s\n" "${updated_json}" > "${CONFIG_PATH}"
+            return
+        fi
+    fi
+
+    # Fallback tanpa jq: pertahankan field lain (seperti lang & terminal)
+    local cur_lang cur_term
+    cur_lang="$(get_lang)"
+    cur_term="$(grep -Eo '"terminal"[[:space:]]*:[[:space:]]*"[^"]*"' "${CONFIG_PATH}" 2>/dev/null | sed -E 's/.*"([^"]*)"$/\1/' | head -n 1)"
+    [[ -z "${cur_term}" ]] && cur_term="gnome-terminal"
+
+    if [[ -z "${new_ctx}" ]]; then
+        cat > "${CONFIG_PATH}" << EOF
+{
+  "lang": "${cur_lang}",
+  "terminal": "${cur_term}"
+}
+EOF
+    else
+        cat > "${CONFIG_PATH}" << EOF
+{
+  "lang": "${cur_lang}",
+  "terminal": "${cur_term}",
+  "num_ctx": ${new_ctx}
+}
+EOF
+    fi
 }
 
 # ==============================================================================
@@ -1251,16 +1346,8 @@ open_local_chat() {
 
     leave_tui
 
-    # Resolusi path config.json yang aman terhadap set -u
-    local _chat_cfg_file="${CONFIG_FILE:-${CFG_FILE:-$(dirname "$(readlink -f "$0")")/config.json}}"
-    local cfg_num_ctx=""
-    if [[ "${HAS_JQ}" -eq 1 && -f "${_chat_cfg_file}" ]]; then
-        local _raw_ctx
-        _raw_ctx="$(jq -r '.num_ctx // empty' "${_chat_cfg_file}" 2>/dev/null || true)"
-        if [[ "${_raw_ctx}" =~ ^[0-9]+$ && "${_raw_ctx}" -gt 0 ]]; then
-            cfg_num_ctx="${_raw_ctx}"
-        fi
-    fi
+    local cfg_num_ctx
+    cfg_num_ctx="$(get_num_ctx)"
     local active_ctx="${cfg_num_ctx:-default}"
 
     draw_chat_header() {
@@ -1491,15 +1578,8 @@ open_local_chat() {
 
         turn_count=$((turn_count + 1))
 
-        # Baca ulang num_ctx dari config.json setiap turn (jika user edit config saat chat berjalan)
-        cfg_num_ctx=""
-        if [[ "${HAS_JQ}" -eq 1 && -f "${_chat_cfg_file}" ]]; then
-            local _raw_ctx
-            _raw_ctx="$(jq -r '.num_ctx // empty' "${_chat_cfg_file}" 2>/dev/null || true)"
-            if [[ "${_raw_ctx}" =~ ^[0-9]+$ && "${_raw_ctx}" -gt 0 ]]; then
-                cfg_num_ctx="${_raw_ctx}"
-            fi
-        fi
+        # Baca ulang num_ctx dari config.json setiap turn
+        cfg_num_ctx="$(get_num_ctx)"
 
         local payload
         if [[ "${HAS_JQ}" -eq 1 ]]; then
@@ -2347,19 +2427,19 @@ name: ARI-DEV Local Ollama
 version: 1.0.0
 schema: v1
 models:
-  - name: Local Chat (${sample_model})
+- name: Local Chat (${sample_model})
     provider: ollama
     model: ${sample_model}
     apiBase: http://127.0.0.1:11434
     roles:
-      - chat
-      - edit
-  - name: Local Autocomplete (${sample_model})
+- chat
+- edit
+- name: Local Autocomplete (${sample_model})
     provider: ollama
     model: ${sample_model}
     apiBase: http://127.0.0.1:11434
     roles:
-      - autocomplete
+- autocomplete
 EOF
 }
 
@@ -2416,12 +2496,12 @@ menu_integrations_api() {
   - API Key           : ollama (dummy key)
 
 2. INTEGRASI PROXY 9ROUTER
-  - Tipe Provider     : OpenAI Compatible
+- Tipe Provider     : OpenAI Compatible
   - Base URL          : http://127.0.0.1:11434/v1
   - Model ID          : Sesuai tag terinstall (misal: qwen2.5-coder:3b)
 
 3. OPEN WEBUI (CONTAINER DOCKER)
-  - Systemd Env       : Environment="OLLAMA_HOST=0.0.0.0:11434"
+- Systemd Env       : Environment="OLLAMA_HOST=0.0.0.0:11434"
   - Docker Run Flag   : --add-host=host.docker.internal:host-gateway
   - Container Env     : OLLAMA_BASE_URL=http://host.docker.internal:11434
   - UFW Firewall      : sudo ufw allow from 172.16.0.0/12 to any port 11434
@@ -2435,12 +2515,12 @@ EOF
   - API Key           : ollama (dummy key)
 
 2. 9ROUTER PROXY INTEGRATION
-  - Provider Type     : OpenAI Compatible
+- Provider Type     : OpenAI Compatible
   - Base URL          : http://127.0.0.1:11434/v1
   - Model ID          : Installed model tag (e.g., qwen2.5-coder:3b)
 
 3. OPEN WEBUI (DOCKER CONTAINER)
-  - Systemd Env       : Environment="OLLAMA_HOST=0.0.0.0:11434"
+- Systemd Env       : Environment="OLLAMA_HOST=0.0.0.0:11434"
   - Docker Run Flag   : --add-host=host.docker.internal:host-gateway
   - Container Env     : OLLAMA_BASE_URL=http://host.docker.internal:11434
   - UFW Firewall      : sudo ufw allow from 172.16.0.0/12 to any port 11434
@@ -2472,27 +2552,48 @@ EOF
 }
 
 # ==============================================================================
-# 11. LANGUAGE PREFERENCES (ID / EN)
+# 11. SYSTEM PREFERENCES (LANGUAGE & NUM_CTX)
 # ==============================================================================
-menu_preferences() {
-    local lang
-    lang="$(get_lang)"
+menu_edit_num_ctx() {
+    local cur_ctx
+    cur_ctx="$(get_num_ctx)"
     local cursor=0
-    [[ "${lang}" == "en" ]] && cursor=1
+
+    local presets=("2048" "4096" "8192" "16384" "32768" "custom" "default")
+    for ((i = 0; i < 5; i++)); do
+        [[ "${cur_ctx}" == "${presets[$i]}" ]] && cursor=${i}
+    done
+    [[ -z "${cur_ctx}" ]] && cursor=6
 
     while true; do
-        begin_neural_frame "$(t pref_sub)"
+        cur_ctx="$(get_num_ctx)"
+        begin_neural_frame "$(t ctx_sub)"
         buf_box_top "${FG_VIOLET}"
-        buf_box_line "${FG_VIOLET}${BOLD}$(t pref_hdr)${RST}${BG_CARD}" "${FG_VIOLET}"
-        buf_box_line "${FG_MUTED}$(t pref_cfg) ${CONFIG_PATH}${RST}${BG_CARD}" "${FG_VIOLET}"
+        buf_box_line "${FG_VIOLET}${BOLD}$(t ctx_hdr)${RST}${BG_CARD}" "${FG_VIOLET}"
+        buf_box_line "${FG_MUTED}$(t pref_cfg) ${CONFIG_PATH}  ${FG_DIM}•  ${FG_AMBER}ACTIVE: ${FG_TEXT}${cur_ctx:-default}${RST}${BG_CARD}" "${FG_VIOLET}"
         buf_box_sep "${FG_DIM}"
 
-        local opts=("Bahasa Indonesia (ID)" "English (EN)")
-        local codes=("id" "en")
+        local opt_labels=(
+            "2048 tokens  ${FG_MUTED}(Hemat RAM / Cepat)${RST}"
+            "4096 tokens  ${FG_MUTED}(Standar Chat Ringan)${RST}"
+            "8192 tokens  ${FG_MUTED}(Optimal Coding & RAG)${RST}"
+            "16384 tokens ${FG_MUTED}(Konteks Panjang / Multi-file)${RST}"
+            "32768 tokens ${FG_MUTED}(Dokumen Besar — Butuh RAM Tinggi)${RST}"
+            "$(t ctx_custom_opt)"
+            "$(t ctx_default_opt)"
+        )
 
-        for ((i = 0; i < 2; i++)); do
+        local total=${#presets[@]}
+        for ((i = 0; i < total; i++)); do
             local radio="○"
-            [[ "${lang}" == "${codes[$i]}" ]] && radio="${FG_GREEN}●"
+            if [[ "${presets[$i]}" == "default" && -z "${cur_ctx}" ]]; then
+                radio="${FG_GREEN}●"
+            elif [[ "${presets[$i]}" == "${cur_ctx}" ]]; then
+                radio="${FG_GREEN}●"
+            elif [[ "${presets[$i]}" == "custom" && -n "${cur_ctx}" && "${cur_ctx}" != "2048" && "${cur_ctx}" != "4096" && "${cur_ctx}" != "8192" && "${cur_ctx}" != "16384" && "${cur_ctx}" != "32768" ]]; then
+                radio="${FG_GREEN}●"
+            fi
+
             local row_bg="${BG_CARD}"
             local prefix="  "
             local col="${FG_TEXT}"
@@ -2501,7 +2602,105 @@ menu_preferences() {
                 prefix="${FG_CYAN}${BOLD}▸ "
                 col="${FG_CYAN}${BOLD}"
             fi
-            buf_box_line "${prefix}[$((i + 1))] ${radio}${RST}${row_bg}  ${col}${opts[$i]}${RST}${row_bg}" "${FG_VIOLET}" "${row_bg}"
+
+            local extra_tag=""
+            if [[ "${presets[$i]}" == "custom" && -n "${cur_ctx}" && "${cur_ctx}" != "2048" && "${cur_ctx}" != "4096" && "${cur_ctx}" != "8192" && "${cur_ctx}" != "16384" && "${cur_ctx}" != "32768" ]]; then
+                extra_tag=" ${FG_AMBER}[${cur_ctx}]${RST}"
+            fi
+
+            buf_box_line "${prefix}[$((i + 1))] ${radio}${RST}${row_bg}  ${col}${opt_labels[$i]}${extra_tag}${RST}${row_bg}" "${FG_VIOLET}" "${row_bg}"
+        done
+
+        buf_box_bottom "${FG_VIOLET}"
+        buf_footer_hints "$(t ctx_hint)"
+        flush_frame
+
+        local k
+        k="$(read_key)"
+        case "${k}" in
+            UP|k|K)   cursor=$(( (cursor - 1 + total) % total )) ;;
+            DOWN|j|J) cursor=$(( (cursor + 1) % total )) ;;
+            [1-7])    cursor=$((k - 1)); k="ENTER" ;;
+            ESC|q|Q|BACK) return ;;
+        esac
+
+        if [[ "${k}" == "ENTER" ]]; then
+            local chosen="${presets[$cursor]}"
+            if [[ "${chosen}" == "custom" ]]; then
+                prompt_input "$(t ctx_prompt_title)" "$(t ctx_prompt_body)" "${cur_ctx:-8192}" 0 || continue
+                local raw_val
+                raw_val="$(echo "${RET_INPUT}" | xargs)"
+                [[ -z "${raw_val}" ]] && continue
+
+                if [[ "${raw_val}" =~ ^[0-9]+$ && "${raw_val}" -ge 128 ]]; then
+                    set_num_ctx "${raw_val}"
+                    show_notice "$(t pref_saved_title)" "$(t ctx_saved_ok) ${raw_val}" "${FG_GREEN}"
+                    return
+                else
+                    show_notice "$(t ctx_invalid_title)" "$(t ctx_invalid_body)" "${FG_RED}"
+                fi
+            elif [[ "${chosen}" == "default" ]]; then
+                set_num_ctx ""
+                show_notice "$(t pref_saved_title)" "$(t ctx_saved_def)" "${FG_GREEN}"
+                return
+            else
+                set_num_ctx "${chosen}"
+                show_notice "$(t pref_saved_title)" "$(t ctx_saved_ok) ${chosen}" "${FG_GREEN}"
+                return
+            fi
+        fi
+    done
+}
+
+menu_preferences() {
+    local cursor=0
+    local lang cur_ctx
+    lang="$(get_lang)"
+    [[ "${lang}" == "en" ]] && cursor=1
+
+    while true; do
+        lang="$(get_lang)"
+        cur_ctx="$(get_num_ctx)"
+
+        begin_neural_frame "$(t pref_sub)"
+        buf_box_top "${FG_VIOLET}"
+        buf_box_line "${FG_VIOLET}${BOLD}$(t pref_hdr)${RST}${BG_CARD}" "${FG_VIOLET}"
+        buf_box_line "${FG_MUTED}$(t pref_cfg) ${CONFIG_PATH}${RST}${BG_CARD}" "${FG_VIOLET}"
+        buf_box_sep "${FG_DIM}"
+
+        local opts=(
+            "Bahasa Indonesia (ID)"
+            "English (EN)"
+            "$(t pref_ctx_item)"
+        )
+
+        for ((i = 0; i < 3; i++)); do
+            local row_bg="${BG_CARD}"
+            local prefix="  "
+            local col="${FG_TEXT}"
+            if [[ ${i} -eq ${cursor} ]]; then
+                row_bg="${BG_SEL}"
+                prefix="${FG_CYAN}${BOLD}▸ "
+                col="${FG_CYAN}${BOLD}"
+            fi
+
+            if [[ ${i} -lt 2 ]]; then
+                local radio="○"
+                [[ ${i} -eq 0 && "${lang}" == "id" ]] && radio="${FG_GREEN}●"
+                [[ ${i} -eq 1 && "${lang}" == "en" ]] && radio="${FG_GREEN}●"
+                buf_box_line "${prefix}[$((i + 1))] ${radio}${RST}${row_bg}  ${col}${opts[$i]}${RST}${row_bg}" "${FG_VIOLET}" "${row_bg}"
+            else
+                local left_part="${prefix}[3] ${FG_AMBER}◈${RST}${row_bg}  ${col}${opts[$i]}${RST}${row_bg}"
+                local right_part="${FG_AMBER}[num_ctx: ${cur_ctx:-default}]${RST}${row_bg}"
+                strip_ansi_len "${left_part}"
+                local l_len=${RET_LEN}
+                strip_ansi_len "${right_part}"
+                local r_len=${RET_LEN}
+                local gap=$((BOX_W - 4 - l_len - r_len))
+                [[ ${gap} -lt 1 ]] && gap=1
+                repeat_char_var " " "${gap}"
+                buf_box_line "${left_part}${RET_STR}${right_part}" "${FG_VIOLET}" "${row_bg}"
+            fi
         done
 
         buf_box_bottom "${FG_VIOLET}"
@@ -2511,20 +2710,26 @@ menu_preferences() {
         local k
         k="$(read_key)"
         case "${k}" in
-            UP|DOWN|j|k|J|K) cursor=$((1 - cursor)) ;;
-            1) cursor=0; k="ENTER" ;;
-            2) cursor=1; k="ENTER" ;;
+            UP|k|K)   cursor=$(( (cursor - 1 + 3) % 3 )) ;;
+            DOWN|j|J) cursor=$(( (cursor + 1) % 3 )) ;;
+            [1-3])    cursor=$((k - 1)); k="ENTER" ;;
             ESC|q|Q|BACK) return ;;
         esac
 
         if [[ "${k}" == "ENTER" ]]; then
-            set_lang "${codes[$cursor]}"
-            if [[ "${codes[$cursor]}" == "id" ]]; then
-                show_notice "$(t pref_saved_title)" "$(t pref_saved_id)" "${FG_GREEN}"
-            else
-                show_notice "$(t pref_saved_title)" "$(t pref_saved_en)" "${FG_GREEN}"
-            fi
-            return
+            case ${cursor} in
+                0)
+                    set_lang "id"
+                    show_notice "$(t pref_saved_title)" "$(t pref_saved_id)" "${FG_GREEN}"
+                    ;;
+                1)
+                    set_lang "en"
+                    show_notice "$(t pref_saved_title)" "$(t pref_saved_en)" "${FG_GREEN}"
+                    ;;
+                2)
+                    menu_edit_num_ctx
+                    ;;
+            esac
         fi
     done
 }
@@ -2539,12 +2744,14 @@ main_loop() {
     local need_sync=1
 
     local lang="id"
+    local cur_ctx=""
     local top_rec_name=""
     local top_rec_size=""
 
     while true; do
         if [[ ${need_sync} -eq 1 ]]; then
             lang="$(get_lang)"
+            cur_ctx="$(get_num_ctx)"
             detect_hardware
             detect_ollama_state
             top_rec_name=""
@@ -2595,7 +2802,7 @@ main_loop() {
             "${FG_SKY}[LIBRARY]${RST}"
             "${svc_tag}"
             "${FG_SKY}[GATEWAY]${RST}"
-            "${FG_MUTED}[${lang^^}]${RST}"
+            "${FG_MUTED}[${lang^^} • CTX:${cur_ctx:-DEF}]${RST}"
             "${FG_MUTED}[SYNC]${RST}"
             "${FG_RED}[ESC]${RST}"
         )
