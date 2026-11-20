@@ -4,7 +4,7 @@
         "min_ram_gb": 4,
         "min_vram_gb": 2,
         "size": "986 MB",
-        "description": "Code Model - Suitable for basic coding tasks on lightweight hardware.",
+        "description_en": "Code Model - Suitable for basic coding tasks on lightweight hardware.",
         "description_id": "Model Kode - Cocok untuk tugas pemrograman dasar pada perangkat ringan.",
         "category": "Coding / Lightweight"
     },
@@ -13,7 +13,7 @@
         "min_ram_gb": 4,
         "min_vram_gb": 2,
         "size": "1.1 GB",
-        "description": "Reasoning Model - Suitable for logic and analytical thinking tasks on lightweight hardware.",
+        "description_en": "Reasoning Model - Suitable for logic and analytical thinking tasks on lightweight hardware.",
         "description_id": "Model Penalaran - Cocok untuk tugas logika dan pemikiran analitis pada perangkat ringan.",
         "category": "Reasoning / Lightweight"
     },
@@ -22,7 +22,7 @@
         "min_ram_gb": 4,
         "min_vram_gb": 2,
         "size": "1.2 GB",
-        "description": "General & Tool Model - Suitable for basic chat, translation, summarization, and simple coding on lightweight hardware.",
+        "description_en": "General & Tool Model - Suitable for basic chat, translation, summarization, and simple coding on lightweight hardware.",
         "description_id": "Model Umum & Alat - Cocok untuk obrolan dasar, terjemahan, ringkasan, dan pemrograman sederhana pada perangkat ringan.",
         "category": "Coding / Lightweight"
     },
@@ -31,7 +31,7 @@
         "min_ram_gb": 4,
         "min_vram_gb": 2,
         "size": "1.3 GB",
-        "description": "General Model - Suitable for daily assistant tasks on ultra-lightweight hardware.",
+        "description_en": "General Model - Suitable for daily assistant tasks on ultra-lightweight hardware.",
         "description_id": "Model Umum - Cocok untuk asisten harian pada perangkat ultra-ringan.",
         "category": "General / Lightweight"
     },
@@ -40,7 +40,7 @@
         "min_ram_gb": 6,
         "min_vram_gb": 3,
         "size": "1.6 GB",
-        "description": "General Model - Suitable for general chat and multilingual tasks on lightweight hardware.",
+        "description_en": "General Model - Suitable for general chat and multilingual tasks on lightweight hardware.",
         "description_id": "Model Umum - Cocok untuk obrolan umum dan tugas multibahasa pada perangkat ringan.",
         "category": "General / Lightweight"
     },
@@ -49,7 +49,7 @@
         "min_ram_gb": 4,
         "min_vram_gb": 2,
         "size": "1.6 GB",
-        "description": "SQL Code Model - Specialized for text-to-SQL query generation on lightweight hardware.",
+        "description_en": "SQL Code Model - Specialized for text-to-SQL query generation on lightweight hardware.",
         "description_id": "Model Kode SQL - Dirancang khusus untuk pembuatan kueri text-to-SQL pada perangkat ringan.",
         "category": "Coding / Lightweight"
     },
@@ -58,7 +58,7 @@
         "min_ram_gb": 4,
         "min_vram_gb": 2,
         "size": "1.7 GB",
-        "description": "Vision Model - Suitable for basic image understanding on lightweight hardware.",
+        "description_en": "Vision Model - Suitable for basic image understanding on lightweight hardware.",
         "description_id": "Model Vision - Cocok untuk pemahaman gambar dasar pada perangkat ringan.",
         "category": "Vision / Lightweight"
     },
@@ -67,7 +67,7 @@
         "min_ram_gb": 4,
         "min_vram_gb": 2,
         "size": "1.7 GB",
-        "description": "Specialized Code Model - Fast syntax generation, refactoring, and patching on mid-range hardware.",
+        "description_en": "Specialized Code Model - Fast syntax generation, refactoring, and patching on mid-range hardware.",
         "description_id": "Model Spesialis Kode - Generasi sintaks cepat, refactoring, dan patching kode pada perangkat menengah.",
         "category": "Coding / Midweight"
     },
@@ -76,7 +76,7 @@
         "min_ram_gb": 8,
         "min_vram_gb": 4,
         "size": "2.0 GB",
-        "description": "General Model - Suitable for daily assistant tasks and general text processing on mid-range hardware.",
+        "description_en": "General Model - Suitable for daily assistant tasks and general text processing on mid-range hardware.",
         "description_id": "Model Umum - Cocok untuk asisten harian dan pemrosesan teks umum pada perangkat menengah.",
         "category": "General / Midweight"
     },
@@ -85,7 +85,7 @@
         "min_ram_gb": 6,
         "min_vram_gb": 3,
         "size": "2.1 GB",
-        "description": "Enterprise & Tool-Calling Model - Solid for structured log analysis, scripting, and agentic CLI workflows.",
+        "description_en": "Enterprise & Tool-Calling Model - Solid for structured log analysis, scripting, and agentic CLI workflows.",
         "description_id": "Model Enterprise & Tool-Calling - Andal untuk analisa log terstruktur, scripting, dan alur kerja agen CLI.",
         "category": "Coding / Agentic"
     },
@@ -94,7 +94,7 @@
         "min_ram_gb": 8,
         "min_vram_gb": 4,
         "size": "2.2 GB",
-        "description": "Code & Logic Model - Suitable for intermediate coding and math tasks on mid-range hardware.",
+        "description_en": "Code & Logic Model - Suitable for intermediate coding and math tasks on mid-range hardware.",
         "description_id": "Model Kode & Logika - Cocok untuk pemrograman menengah dan matematika pada perangkat menengah.",
         "category": "Coding / Midweight"
     },
@@ -103,7 +103,7 @@
         "min_ram_gb": 8,
         "min_vram_gb": 4,
         "size": "2.5 GB",
-        "description": "Multimodal General & Code Model - Great for structured stack trace explanations, documentation, and UI/terminal screenshots.",
+        "description_en": "Multimodal General & Code Model - Great for structured stack trace explanations, documentation, and UI/terminal screenshots.",
         "description_id": "Model Umum & Kode Multimodal - Bagus untuk penjelasan stack trace terstruktur, dokumentasi, dan analisa screenshot UI/terminal.",
         "category": "Analysis / Vision"
     },
@@ -112,7 +112,7 @@
         "min_ram_gb": 8,
         "min_vram_gb": 4,
         "size": "3.3 GB",
-        "description": "Multimodal Reasoning & Code Model - Strong logical deduction for deep trace error analysis, debugging, and error screenshots.",
+        "description_en": "Multimodal Reasoning & Code Model - Strong logical deduction for deep trace error analysis, debugging, and error screenshots.",
         "description_id": "Model Penalaran & Kode Multimodal - Penalaran logika kuat untuk analisa trace error mendalam, debugging, dan membaca screenshot error.",
         "category": "Coding / Reasoning / Vision"
     },
@@ -121,7 +121,7 @@
         "min_ram_gb": 16,
         "min_vram_gb": 6,
         "size": "4.7 GB",
-        "description": "Reasoning Model - Suitable for deep analytical reasoning on high-performance hardware.",
+        "description_en": "Reasoning Model - Suitable for deep analytical reasoning on high-performance hardware.",
         "description_id": "Model Penalaran - Cocok untuk penalaran analitis mendalam pada perangkat berperforma tinggi.",
         "category": "Reasoning / Heavy"
     },
@@ -130,7 +130,7 @@
         "min_ram_gb": 16,
         "min_vram_gb": 6,
         "size": "4.7 GB",
-        "description": "Vision Model - Suitable for advanced image and multimodal analysis on high-performance hardware.",
+        "description_en": "Vision Model - Suitable for advanced image and multimodal analysis on high-performance hardware.",
         "description_id": "Model Vision - Cocok untuk analisa gambar dan multimodal lanjutan pada perangkat berperforma tinggi.",
         "category": "Vision / Heavy"
     },
@@ -139,7 +139,7 @@
         "min_ram_gb": 16,
         "min_vram_gb": 6,
         "size": "4.7 GB",
-        "description": "General Model - Suitable for high-performance general tasks on high-performance hardware.",
+        "description_en": "General Model - Suitable for high-performance general tasks on high-performance hardware.",
         "description_id": "Model Umum - Cocok untuk tugas umum berat pada perangkat berperforma tinggi.",
         "category": "General / Heavy"
     },
@@ -148,7 +148,7 @@
         "min_ram_gb": 16,
         "min_vram_gb": 6,
         "size": "5.5 GB",
-        "description": "Vision Model - Suitable for detailed image understanding and OCR tasks on high-performance hardware.",
+        "description_en": "Vision Model - Suitable for detailed image understanding and OCR tasks on high-performance hardware.",
         "description_id": "Model Vision - Cocok untuk pemahaman gambar detail dan tugas OCR pada perangkat berperforma tinggi.",
         "category": "Vision / Heavy"
     }
