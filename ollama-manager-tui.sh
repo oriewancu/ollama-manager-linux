@@ -8,7 +8,6 @@ set -u
 shopt -s checkwinsize 2>/dev/null || true
 
 APP_NAME="ARI-DEV // NEURAL OLLAMA ENGINE"
-APP_SUB="LOCAL LLM ORCHESTRATOR • BASH TUI"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DB_PATH="${SCRIPT_DIR}/models_db.json"
 CONFIG_PATH="${SCRIPT_DIR}/config.json"
@@ -60,6 +59,7 @@ IN_ALT_SCREEN=0
 FRAME_BUF=""
 RET_LEN=0
 RET_STR=""
+CURRENT_LANG="id"
 
 enter_tui() {
     if [[ ${IN_ALT_SCREEN} -eq 0 ]]; then
@@ -86,7 +86,371 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 # ==============================================================================
-# 2. DATABASE (models_db.json) & CONFIG (config.json)
+# 2. LOCALIZATION ENGINE (ID / EN)
+# ==============================================================================
+declare -A I18N_ID=(
+    ["app_sub"]="ORKESTRATOR LLM LOKAL • BASH TUI"
+    ["badge_missing"]=" ✕ RUNTIME BELUM TERPASANG "
+    ["badge_online"]=" ● NEURAL CORE AKTIF"
+    ["badge_standby"]=" ○ ENGINE STANDBY"
+    ["hw_models"]="MODEL"
+    ["hw_cuda_ready"]="(CUDA Siap)"
+
+    ["btn_continue"]="  [ ENTER / ESC ] LANJUTKAN  "
+    ["btn_yes"]=" ▸ KONFIRMASI (YA) "
+    ["btn_no"]="   BATAL (TIDAK)   "
+    ["hint_confirm"]="[←/→] Pilih   [Enter] Konfirmasi   [Esc] Batal"
+    ["prompt_cancel_hint"]="Tekan [Enter] untuk lanjut, atau kosongkan lalu [Enter] untuk batal."
+
+    ["install_title"]="INSTALER RUNTIME NEURAL"
+    ["install_prompt"]="Installer resmi Ollama akan dijalankan:\n  curl -fsSL https://ollama.com/install.sh | sh\n\nMasukkan password sudo Linux Anda (kosongkan jika passwordless sudo):"
+    ["install_banner"]="  ◈ ARI-DEV INSTALER RUNTIME NEURAL  "
+    ["install_bad_pw"]="[✕] Password sudo salah."
+    ["press_enter_cont"]="Tekan Enter untuk melanjutkan..."
+    ["install_s1"]="[1/3] Mengunduh & menjalankan installer resmi Ollama..."
+    ["install_fail"]="[✕] Installer berhenti dengan kode keluar"
+    ["install_s2"]="[2/3] Mengaktifkan & menjalankan systemd neural daemon..."
+    ["install_fallback"]="  Menjalankan daemon cadangan: ollama serve &"
+    ["install_s3"]="[3/3] Melakukan handshake dengan API lokal http://127.0.0.1:11434 ..."
+    ["install_ok"]="✓ BERHASIL! Neural Engine aktif di"
+    ["install_warn"]="▲ Terpasang, namun daemon belum merespons. Jalankan service dari dashboard."
+
+    ["svc_banner"]="  ◈ ARI-DEV PENGONTROL LAYANAN NEURAL  "
+    ["svc_starting"]="[▸] Menyalakan layanan latar belakang Ollama..."
+    ["svc_online"]="[✓] Neural Engine sekarang AKTIF (ONLINE)."
+    ["svc_stopping"]="[▸] Menghentikan layanan latar belakang Ollama..."
+    ["svc_standby"]="[✓] Neural Engine sekarang STANDBY."
+
+    ["pull_banner"]="  ◈ PENGUNDUH BOBOT NEURAL:"
+    ["pull_s1"]="[1/4] Memeriksa runtime Ollama..."
+    ["pull_not_inst"]="  ▸ Ollama belum terpasang, membuka installer..."
+    ["pull_no_rt"]="[✕] Runtime Ollama tidak tersedia. Proses dibatalkan."
+    ["pull_rt_ok"]="  ✓ Runtime terdeteksi"
+    ["pull_s2"]="[2/4] Memeriksa status daemon Ollama"
+    ["pull_start_d"]="  ▸ Daemon standby, menyalakan service Ollama..."
+    ["pull_wait_api"]="  ▸ Menunggu API siap"
+    ["pull_d_fail"]="[✕] Daemon Ollama gagal merespons di"
+    ["pull_d_ok"]="  ✓ Neural Daemon AKTIF"
+    ["pull_s3"]="[3/4] Menghubungi Ollama Registry & mengunduh"
+    ["pull_manifest"]="  ▸ Mengambil manifest & layer dari registry.ollama.ai (tekan Ctrl+C untuk batal)"
+    ["pull_s4"]="[4/4] Verifikasi akhir..."
+    ["pull_aborted"]="[!] Proses unduh dibatalkan oleh pengguna."
+    ["pull_ready_1"]="[✓] Model"
+    ["pull_ready_2"]="siap digunakan! (Total lokal:"
+    ["pull_ready_3"]="model)"
+    ["pull_err_1"]="[✕] Gagal mengunduh"
+    ["pull_err_2"]="Pastikan nama tag valid."
+    ["pull_back"]="Tekan Enter untuk kembali ke dashboard..."
+
+    ["del_title"]="HAPUS BOBOT MODEL"
+    ["del_msg"]="Hapus permanen model berikut dari penyimpanan lokal?"
+    ["del_purging"]="[▸] Menghapus"
+
+    ["chat_standby_body"]="Ollama service sedang berhenti.\nJalankan 'Kontrol Daya Engine — Start / Stop Ollama' terlebih dahulu."
+    ["chat_cmds"]="Perintah: ${FG_SKY}/copy [n]${FG_MUTED} (salin kode) • ${FG_SKY}/last${FG_MUTED} (salin balasan) • ${FG_SKY}/clear${FG_MUTED} • ${FG_SKY}/exit"
+    ["chat_code_hint_pre"]="└─ [Ketik /copy atau /copy"
+    ["chat_code_hint_post"]="untuk salin kode]"
+    ["chat_cleared"]="[✦] Riwayat percakapan (context window) dibersihkan."
+    ["chat_last_ok"]="[✓] Seluruh respons terakhir berhasil disalin ke clipboard!"
+    ["chat_no_clip"]="[!] Clipboard tool (xclip/wl-copy) belum terpasang. Install: sudo apt install xclip"
+    ["chat_no_reply"]="[!] Belum ada respons AI untuk disalin."
+    ["chat_no_code"]="[!] Tidak ditemukan blok kode pada respons terakhir."
+    ["chat_copy_all_1"]="[✓] Semua ("
+    ["chat_copy_all_2"]=") blok kode berhasil disalin ke clipboard!"
+    ["chat_bad_idx"]="[✕] Nomor blok kode tidak valid. Tersedia: 1 s/d"
+    ["chat_lines"]="baris"
+    ["chat_copied_clip"]="berhasil disalin ke clipboard!"
+    ["chat_saved_file"]="[!] Install xclip (sudo apt install xclip) untuk auto-clipboard. File tersimpan di:"
+    ["chat_blocks_ready"]="blok kode siap (/copy)"
+    ["chat_stream_done"]="Streaming selesai"
+
+    ["store_sub"]="TOKO MODEL NEURAL • COCOK HARDWARE"
+    ["store_hdr"]="◈ DAFTAR MODEL NEURAL PILIHAN"
+    ["store_page"]="HAL"
+    ["store_empty_1"]="  Tidak ada model untuk kategori"
+    ["store_empty_2"]="Tekan [F] untuk ganti filter."
+    ["store_installed_badge"]="✓ TERINSTALL"
+    ["store_cat"]="Kategori:"
+    ["store_size"]="Ukuran:"
+    ["store_fit"]="Kecocokan:"
+    ["store_fit_opt"]="Optimal (Cocok GPU)"
+    ["store_fit_cmp"]="Kompatibel (Hybrid)"
+    ["store_fit_hvy"]="Berat (Butuh RAM Besar)"
+    ["store_st_inst"]="Terinstall"
+    ["store_st_not"]="Belum Terinstall"
+    ["store_sel_one"]="[1] Pilih   "
+    ["store_sel_many_pre"]="[1-"
+    ["store_sel_many_post"]="] Pilih   "
+    ["store_hint_1"]="[↑/↓] Navigasi   [←/→] Halaman   [F] Filter:"
+    ["store_hint_2"]="[Enter] Install"
+    ["store_hint_3"]="[Esc/Q] Kembali"
+
+    ["custom_title"]="UNDUH REGISTRY KUSTOM"
+    ["custom_prompt"]="Masukkan nama model & tag resmi dari https://ollama.com/library\nContoh: qwen2.5-coder:3b, llama3.2:3b, mistral:7b, nomic-embed-text"
+    ["custom_cancel_title"]="DIBATALKAN"
+    ["custom_cancel_body"]="Input kosong — pengunduhan dibatalkan."
+
+    ["inspect_title"]="ARSITEKTUR MODEL:"
+    ["inspect_err"]="Tidak dapat membaca metadata model"
+
+    ["vault_empty_title"]="BELUM ADA MODEL LOKAL"
+    ["vault_empty_body"]="Belum ada model terinstall.\nGunakan 'Toko Model Neural' untuk mengunduh model."
+    ["vault_sub_1"]="BRANKAS MODEL LOKAL •"
+    ["vault_sub_2"]="MODEL SIAP"
+    ["vault_hdr"]="◈ MODEL NEURAL TERINSTALL"
+    ["vault_search_lbl"]="⌕ CARI:"
+    ["vault_search_tip"]="(Ketik nama • [Enter] Terapkan • [Esc] Reset)"
+    ["vault_filter_lbl"]="⌕ FILTER:"
+    ["vault_matched"]="cocok"
+    ["vault_edit_btn"]="[/] Ubah   [X/Esc] Reset"
+    ["vault_idle_1"]="⌕ Tekan"
+    ["vault_idle_2"]="atau"
+    ["vault_idle_3"]="untuk mencari model terinstall..."
+    ["vault_no_match_1"]="  Tidak ada model yang cocok dengan"
+    ["vault_no_match_2"]="Tekan [Esc] atau [X] untuk reset."
+    ["vault_updated"]="Diperbarui: "
+    ["vault_hint_search"]="[A-Z/0-9] Filter Langsung   [↑/↓] Pilih   [Backspace] Hapus   [Enter] Selesai   [Esc] Reset"
+    ["vault_hint_nav_1"]="[↑/↓] Navigasi   [←/→] Halaman   [/] Cari   [Enter] Aksi   [C] Chat"
+    ["vault_hint_nav_2"]="[Esc/Q] Kembali"
+
+    ["act_sub"]="KONTROL MODEL //"
+    ["act_hdr"]="◈ TARGET BOBOT:"
+    ["act_1"]="Mulai Neural Streaming Chat (Terminal Interaktif)"
+    ["act_2"]="Periksa Arsitektur & Parameter (ollama show)"
+    ["act_3"]="Salin Tag Model ke Clipboard"
+    ["act_4"]="Hapus Permanen Model dari Disk"
+    ["act_hint"]="[↑/↓] Navigasi   [Enter] Jalankan   [1-4] Pintasan   [Esc/Q] Kembali"
+    ["act_copy_title"]="TERSALIN KE CLIPBOARD"
+    ["act_copy_ok_1"]="Tag"
+    ["act_copy_ok_2"]="berhasil disalin ke clipboard!"
+    ["act_copy_fb_title"]="TAG MODEL"
+    ["act_copy_fb_note"]="(Install xclip atau wl-copy untuk auto-clipboard)"
+
+    ["api_sub"]="GERBANG AGEN AI • 9ROUTER • OPEN WEBUI • CONTINUE.DEV"
+    ["api_hdr"]="◈ PUSAT INTEGRASI ENDPOINT LOKAL & AGEN AI"
+    ["api_1"]="Panduan Endpoint: 9Router, Open WebUI (Docker) & Aider CLI"
+    ["api_2"]="Tes Koneksi API Langsung (http://127.0.0.1:11434/api/tags)"
+    ["api_3"]="Pratinjau Konfigurasi Continue.dev (~/.continue/config.yaml)"
+    ["api_4"]="Salin YAML Continue.dev ke Clipboard"
+    ["api_hint"]="[↑/↓] Navigasi   [Enter] Pilih   [1-4] Pintasan   [Esc/Q] Kembali"
+    ["api_guide_title"]="PANDUAN INTEGRASI EKOSISTEM AI"
+    ["api_hs_ok_title"]="HANDSHAKE BERHASIL"
+    ["api_hs_ok_body"]="✓ HTTP 200 OK — Neural API aktif di http://127.0.0.1:11434"
+    ["api_hs_err_title"]="HANDSHAKE GAGAL"
+    ["api_hs_err_body"]="✕ Gagal terhubung ke http://127.0.0.1:11434.\nPastikan Ollama service sedang berjalan."
+    ["api_yaml_ok"]="✓ Konfigurasi Continue.dev YAML berhasil disalin ke clipboard!"
+    ["api_yaml_err_title"]="CLIPBOARD TIDAK TERSEDIA"
+    ["api_yaml_err_body"]="Install 'xclip' atau 'wl-copy' untuk menyalin otomatis."
+
+    ["pref_sub"]="PREFERENSI SISTEM // BAHASA ANTARMUKA"
+    ["pref_hdr"]="◈ PILIH BAHASA ANTARMUKA"
+    ["pref_cfg"]="  Konfigurasi:"
+    ["pref_hint"]="[↑/↓] Pilih   [1/2] Pintasan   [Enter] Simpan Bahasa   [Esc/Q] Kembali"
+    ["pref_saved_title"]="BAHASA DIPERBARUI"
+    ["pref_saved_id"]="✓ Bahasa antarmuka diubah ke Bahasa Indonesia (ID)."
+
+    ["main_matrix"]="◈ MATRIKS PERINTAH NEURAL"
+    ["main_install"]="INSTALL OLLAMA RUNTIME SEKARANG (Wajib)"
+    ["main_quick"]="Quick-Install Rekomendasi Terbaik:"
+    ["main_m1"]="Brankas Model Neural — Chat, Inspect, Copy & Hapus"
+    ["main_m2"]="Toko Model Neural — Rekomendasi Cerdas Hardware"
+    ["main_m3"]="Unduh Model Kustom — Tarik Tag dari Ollama Library"
+    ["main_m4"]="Kontrol Daya Engine — Start / Stop Ollama Daemon"
+    ["main_m5"]="Gerbang Agen & API — 9Router, Open WebUI & Continue.dev"
+    ["main_m6"]="Preferensi Sistem — Bahasa Antarmuka (ID / EN)"
+    ["main_m7"]="Sinkronisasi Telemetri — Muat Ulang Status Hardware & Service"
+    ["main_m8"]="Keluar dari Command Center"
+    ["main_hint_1"]="[↑/↓] Navigasi   [Enter] Jalankan   [1-"
+    ["main_hint_2"]="] Pintasan   [R] Sinkronisasi   [Q] Keluar"
+)
+
+declare -A I18N_EN=(
+    ["app_sub"]="LOCAL LLM ORCHESTRATOR • BASH TUI"
+    ["badge_missing"]=" ✕ RUNTIME MISSING "
+    ["badge_online"]=" ● NEURAL CORE ONLINE"
+    ["badge_standby"]=" ○ ENGINE STANDBY"
+    ["hw_models"]="MODELS"
+    ["hw_cuda_ready"]="(CUDA Ready)"
+
+    ["btn_continue"]="  [ ENTER / ESC ] CONTINUE  "
+    ["btn_yes"]=" ▸ CONFIRM (YES) "
+    ["btn_no"]="   CANCEL (NO)   "
+    ["hint_confirm"]="[←/→] Toggle   [Enter] Confirm   [Esc] Cancel"
+    ["prompt_cancel_hint"]="Press [Enter] to continue, or leave blank and press [Enter] to cancel."
+
+    ["install_title"]="NEURAL RUNTIME INSTALLER"
+    ["install_prompt"]="The official Ollama installer will execute:\n  curl -fsSL https://ollama.com/install.sh | sh\n\nEnter your Linux sudo password (leave blank if passwordless sudo):"
+    ["install_banner"]="  ◈ ARI-DEV NEURAL RUNTIME INSTALLER  "
+    ["install_bad_pw"]="[✕] Incorrect sudo password."
+    ["press_enter_cont"]="Press Enter to continue..."
+    ["install_s1"]="[1/3] Downloading & executing official Ollama runtime installer..."
+    ["install_fail"]="[✕] Installer exited with code"
+    ["install_s2"]="[2/3] Enabling & starting systemd neural daemon..."
+    ["install_fallback"]="  Launching fallback daemon: ollama serve &"
+    ["install_s3"]="[3/3] Handshaking with local API http://127.0.0.1:11434 ..."
+    ["install_ok"]="✓ SUCCESS! Neural Engine active at"
+    ["install_warn"]="▲ Installed, but daemon did not respond yet. Toggle service from dashboard."
+
+    ["svc_banner"]="  ◈ ARI-DEV NEURAL SERVICE CONTROLLER  "
+    ["svc_starting"]="[▸] Igniting Ollama background service..."
+    ["svc_online"]="[✓] Neural Engine is now ONLINE."
+    ["svc_stopping"]="[▸] Suspending Ollama background service..."
+    ["svc_standby"]="[✓] Neural Engine is now STANDBY."
+
+    ["pull_banner"]="  ◈ NEURAL WEIGHTS DOWNLOADER:"
+    ["pull_s1"]="[1/4] Checking Ollama runtime..."
+    ["pull_not_inst"]="  ▸ Ollama is not installed yet, launching installer..."
+    ["pull_no_rt"]="[✕] Ollama runtime unavailable. Operation cancelled."
+    ["pull_rt_ok"]="  ✓ Runtime detected"
+    ["pull_s2"]="[2/4] Checking Ollama daemon status"
+    ["pull_start_d"]="  ▸ Daemon on standby, starting Ollama service..."
+    ["pull_wait_api"]="  ▸ Waiting for API readiness"
+    ["pull_d_fail"]="[✕] Ollama daemon failed to respond at"
+    ["pull_d_ok"]="  ✓ Neural Daemon ONLINE"
+    ["pull_s3"]="[3/4] Contacting Ollama Registry & pulling"
+    ["pull_manifest"]="  ▸ Fetching manifest & layers from registry.ollama.ai (press Ctrl+C to cancel)"
+    ["pull_s4"]="[4/4] Final verification..."
+    ["pull_aborted"]="[!] Download cancelled by user."
+    ["pull_ready_1"]="[✓] Model"
+    ["pull_ready_2"]="is ready to use! (Local total:"
+    ["pull_ready_3"]="models)"
+    ["pull_err_1"]="[✕] Failed to pull"
+    ["pull_err_2"]="Ensure the tag name is valid."
+    ["pull_back"]="Press Enter to return to dashboard..."
+
+    ["del_title"]="PURGE MODEL WEIGHTS"
+    ["del_msg"]="Permanently remove this model from local storage?"
+    ["del_purging"]="[▸] Purging"
+
+    ["chat_standby_body"]="Ollama service is currently stopped.\nRun 'Engine Power Control — Start / Stop Ollama Daemon' first."
+    ["chat_cmds"]="Commands: ${FG_SKY}/copy [n]${FG_MUTED} (copy code) • ${FG_SKY}/last${FG_MUTED} (copy reply) • ${FG_SKY}/clear${FG_MUTED} • ${FG_SKY}/exit"
+    ["chat_code_hint_pre"]="└─ [Type /copy or /copy"
+    ["chat_code_hint_post"]="to copy code]"
+    ["chat_cleared"]="[✦] Neural context window cleared."
+    ["chat_last_ok"]="[✓] Entire last reply copied to clipboard!"
+    ["chat_no_clip"]="[!] Clipboard tool (xclip/wl-copy) not installed. Install: sudo apt install xclip"
+    ["chat_no_reply"]="[!] No AI reply available to copy yet."
+    ["chat_no_code"]="[!] No code blocks found in the last reply."
+    ["chat_copy_all_1"]="[✓] All ("
+    ["chat_copy_all_2"]=") code blocks copied to clipboard!"
+    ["chat_bad_idx"]="[✕] Invalid code block number. Available: 1 to"
+    ["chat_lines"]="lines"
+    ["chat_copied_clip"]="copied to clipboard!"
+    ["chat_saved_file"]="[!] Install xclip (sudo apt install xclip) for auto-clipboard. Saved to:"
+    ["chat_blocks_ready"]="code block(s) ready (/copy)"
+    ["chat_stream_done"]="Stream complete"
+
+    ["store_sub"]="NEURAL MODEL STORE • HARDWARE MATCHED"
+    ["store_hdr"]="◈ CURATED NEURAL MODELS"
+    ["store_page"]="PAGE"
+    ["store_empty_1"]="  No models found for category"
+    ["store_empty_2"]="Press [F] to switch filter."
+    ["store_installed_badge"]="✓ INSTALLED"
+    ["store_cat"]="Category:"
+    ["store_size"]="Size:"
+    ["store_fit"]="Fit:"
+    ["store_fit_opt"]="Optimal (GPU Fit)"
+    ["store_fit_cmp"]="Compatible (Hybrid)"
+    ["store_fit_hvy"]="Heavy (High RAM)"
+    ["store_st_inst"]="Installed"
+    ["store_st_not"]="Not Installed"
+    ["store_sel_one"]="[1] Page Select   "
+    ["store_sel_many_pre"]="[1-"
+    ["store_sel_many_post"]="] Page Select   "
+    ["store_hint_1"]="[↑/↓] Nav   [←/→] Page   [F] Filter:"
+    ["store_hint_2"]="[Enter] Install"
+    ["store_hint_3"]="[Esc/Q] Back"
+
+    ["custom_title"]="CUSTOM REGISTRY PULL"
+    ["custom_prompt"]="Enter official model name & tag from https://ollama.com/library\nExamples: qwen2.5-coder:3b, llama3.2:3b, mistral:7b, nomic-embed-text"
+    ["custom_cancel_title"]="CANCELLED"
+    ["custom_cancel_body"]="Empty input — download cancelled."
+
+    ["inspect_title"]="MODEL ARCHITECTURE:"
+    ["inspect_err"]="Unable to read metadata for model"
+
+    ["vault_empty_title"]="NO LOCAL MODELS"
+    ["vault_empty_body"]="No models installed yet.\nOpen 'Neural Model Store' to download weights."
+    ["vault_sub_1"]="LOCAL WEIGHTS VAULT •"
+    ["vault_sub_2"]="MODELS READY"
+    ["vault_hdr"]="◈ INSTALLED NEURAL MODELS"
+    ["vault_search_lbl"]="⌕ SEARCH:"
+    ["vault_search_tip"]="(Type name • [Enter] Apply • [Esc] Reset)"
+    ["vault_filter_lbl"]="⌕ FILTER:"
+    ["vault_matched"]="matched"
+    ["vault_edit_btn"]="[/] Edit   [X/Esc] Reset"
+    ["vault_idle_1"]="⌕ Press"
+    ["vault_idle_2"]="or"
+    ["vault_idle_3"]="to search installed models..."
+    ["vault_no_match_1"]="  No models matched"
+    ["vault_no_match_2"]="Press [Esc] or [X] to reset."
+    ["vault_updated"]="Updated: "
+    ["vault_hint_search"]="[A-Z/0-9] Live Filter   [↑/↓] Select   [Backspace] Delete   [Enter] Done   [Esc] Reset"
+    ["vault_hint_nav_1"]="[↑/↓] Nav   [←/→] Page   [/] Search   [Enter] Actions   [C] Chat"
+    ["vault_hint_nav_2"]="[Esc/Q] Back"
+
+    ["act_sub"]="MODEL CONTROL //"
+    ["act_hdr"]="◈ TARGET WEIGHTS:"
+    ["act_1"]="Launch Neural Streaming Chat (Interactive Terminal)"
+    ["act_2"]="Inspect Architecture & Parameters (ollama show)"
+    ["act_3"]="Copy Model Tag to Clipboard"
+    ["act_4"]="Purge / Delete Model from Disk"
+    ["act_hint"]="[↑/↓] Navigate   [Enter] Execute   [1-4] Hotkey   [Esc/Q] Back"
+    ["act_copy_title"]="CLIPBOARD COPIED"
+    ["act_copy_ok_1"]="Tag"
+    ["act_copy_ok_2"]="copied to clipboard!"
+    ["act_copy_fb_title"]="MODEL TAG"
+    ["act_copy_fb_note"]="(Install xclip or wl-copy for auto-clipboard)"
+
+    ["api_sub"]="AI AGENT GATEWAY • 9ROUTER • OPEN WEBUI • CONTINUE.DEV"
+    ["api_hdr"]="◈ LOCAL ENDPOINT & AGENT INTEGRATION HUB"
+    ["api_1"]="Endpoint Guide: 9Router, Open WebUI (Docker) & Aider CLI"
+    ["api_2"]="Live API Handshake Test (http://127.0.0.1:11434/api/tags)"
+    ["api_3"]="Preview Continue.dev Config (~/.continue/config.yaml)"
+    ["api_4"]="Copy Continue.dev YAML to Clipboard"
+    ["api_hint"]="[↑/↓] Navigate   [Enter] Select   [1-4] Hotkey   [Esc/Q] Back"
+    ["api_guide_title"]="AI ECOSYSTEM INTEGRATION GUIDE"
+    ["api_hs_ok_title"]="HANDSHAKE SUCCESS"
+    ["api_hs_ok_body"]="✓ HTTP 200 OK — Neural API active at http://127.0.0.1:11434"
+    ["api_hs_err_title"]="HANDSHAKE FAILED"
+    ["api_hs_err_body"]="✕ Failed to connect to http://127.0.0.1:11434.\nEnsure the Ollama service is running."
+    ["api_yaml_ok"]="✓ Continue.dev YAML configuration copied to clipboard!"
+    ["api_yaml_err_title"]="CLIPBOARD UNAVAILABLE"
+    ["api_yaml_err_body"]="Install 'xclip' or 'wl-copy' for automatic clipboard copy."
+
+    ["pref_sub"]="SYSTEM PREFERENCES // INTERFACE LOCALE"
+    ["pref_hdr"]="◈ SELECT INTERFACE LANGUAGE"
+    ["pref_cfg"]="  Config:"
+    ["pref_hint"]="[↑/↓] Toggle   [1/2] Hotkey   [Enter] Save Locale   [Esc/Q] Back"
+    ["pref_saved_title"]="LOCALE UPDATED"
+    ["pref_saved_en"]="✓ Interface language switched to English (EN)."
+
+    ["main_matrix"]="◈ NEURAL COMMAND MATRIX"
+    ["main_install"]="INSTALL OLLAMA RUNTIME NOW (Required)"
+    ["main_quick"]="Quick-Install Top Match:"
+    ["main_m1"]="Neural Models Vault — Chat, Inspect, Copy & Delete"
+    ["main_m2"]="Neural Model Store — Hardware-Matched Recommendations"
+    ["main_m3"]="Custom Registry Pull — Download Tag from Ollama Library"
+    ["main_m4"]="Engine Power Control — Start / Stop Ollama Daemon"
+    ["main_m5"]="Agent & API Gateway — 9Router, Open WebUI & Continue.dev"
+    ["main_m6"]="System Preferences — Interface Language (ID / EN)"
+    ["main_m7"]="Sync Telemetry — Refresh Hardware & Service Status"
+    ["main_m8"]="Exit Command Center"
+    ["main_hint_1"]="[↑/↓] Navigate   [Enter] Execute   [1-"
+    ["main_hint_2"]="] Quick Jump   [R] Sync Telemetry   [Q] Quit"
+)
+
+t() {
+    local key="$1"
+    if [[ "${CURRENT_LANG}" == "en" ]]; then
+        printf "%s" "${I18N_EN[$key]:-${I18N_ID[$key]:-$key}}"
+    else
+        printf "%s" "${I18N_ID[$key]:-${I18N_EN[$key]:-$key}}"
+    fi
+}
+
+# ==============================================================================
+# 3. DATABASE (models_db.json) & CONFIG (config.json)
 # ==============================================================================
 init_files() {
     if [[ ! -f "${DB_PATH}" ]]; then
@@ -160,24 +524,45 @@ EOF
     fi
 
     if [[ ! -f "${CONFIG_PATH}" ]]; then
-        echo '{"lang": "id"}' > "${CONFIG_PATH}"
+        printf '{"lang": "id"}\n' > "${CONFIG_PATH}"
     fi
+    CURRENT_LANG="$(get_lang)"
 }
 
 get_lang() {
-    if [[ -f "${CONFIG_PATH}" ]] && grep -q '"en"' "${CONFIG_PATH}"; then
-        echo "en"
-    else
-        echo "id"
+    local detected="id"
+    if [[ -f "${CONFIG_PATH}" ]]; then
+        if [[ "${HAS_JQ}" -eq 1 ]]; then
+            local jq_lang
+            jq_lang="$(jq -r '.lang // "id"' "${CONFIG_PATH}" 2>/dev/null || echo "id")"
+            [[ "${jq_lang}" == "en" ]] && detected="en"
+        elif grep -Eq '"lang"[[:space:]]*:[[:space:]]*"en"' "${CONFIG_PATH}"; then
+            detected="en"
+        fi
     fi
+    CURRENT_LANG="${detected}"
+    printf "%s" "${detected}"
 }
 
 set_lang() {
-    echo "{\"lang\": \"$1\"}" > "${CONFIG_PATH}"
+    local new_lang="id"
+    [[ "${1:-}" == "en" ]] && new_lang="en"
+
+    if [[ "${HAS_JQ}" -eq 1 && -f "${CONFIG_PATH}" ]]; then
+        local updated_json
+        if updated_json="$(jq --arg l "${new_lang}" '.lang = $l' "${CONFIG_PATH}" 2>/dev/null)" && [[ -n "${updated_json}" ]]; then
+            printf "%s\n" "${updated_json}" > "${CONFIG_PATH}"
+        else
+            printf '{"lang": "%s"}\n' "${new_lang}" > "${CONFIG_PATH}"
+        fi
+    else
+        printf '{"lang": "%s"}\n' "${new_lang}" > "${CONFIG_PATH}"
+    fi
+    CURRENT_LANG="${new_lang}"
 }
 
 # ==============================================================================
-# 3. SYSTEM HARDWARE, GPU TELEMETRY & OLLAMA STATE DETECTION
+# 4. SYSTEM HARDWARE, GPU TELEMETRY & OLLAMA STATE DETECTION
 # ==============================================================================
 CPU_CORES=4
 RAM_TOTAL_GB="8.0"
@@ -294,7 +679,7 @@ copy_to_clipboard() {
 }
 
 # ==============================================================================
-# 4. ZERO-FLICKER DOUBLE-BUFFERED RENDERING ENGINE (PURE BASH, NO SUBSHELLS)
+# 5. ZERO-FLICKER DOUBLE-BUFFERED RENDERING ENGINE (PURE BASH, NO SUBSHELLS)
 # ==============================================================================
 BOX_W=96
 PAD_L=2
@@ -318,7 +703,6 @@ calc_layout() {
     [[ ${PAD_L} -gt 0 ]] && printf -v PAD_L_STR "%*s" "${PAD_L}" ""
 }
 
-# Pure-Bash ANSI length counter (zero sed / zero subshells)
 strip_ansi_len() {
     local s="$1"
     while [[ "$s" == *$'\033['* ]]; do
@@ -425,18 +809,18 @@ flush_frame() {
 }
 
 begin_neural_frame() {
-    local subtitle="${1:-${APP_SUB}}"
+    local subtitle="${1:-$(t app_sub)}"
     calc_layout
     FRAME_BUF=""
     buf_blank_line
 
     local badge
     if [[ ${OLLAMA_INSTALLED} -eq 0 ]]; then
-        badge="${BG_BADGE_ERR}${FG_RED}${BOLD} ✕ RUNTIME MISSING ${BG_CARD}"
+        badge="${BG_BADGE_ERR}${FG_RED}${BOLD}$(t badge_missing)${BG_CARD}"
     elif [[ ${OLLAMA_RUNNING} -eq 1 ]]; then
-        badge="${BG_BADGE_OK}${FG_GREEN}${BOLD} ● NEURAL CORE ONLINE (${OLLAMA_VERSION}) ${BG_CARD}"
+        badge="${BG_BADGE_OK}${FG_GREEN}${BOLD}$(t badge_online) (${OLLAMA_VERSION}) ${BG_CARD}"
     else
-        badge="${BG_BADGE_ERR}${FG_AMBER}${BOLD} ○ ENGINE STANDBY (${OLLAMA_VERSION}) ${BG_CARD}"
+        badge="${BG_BADGE_ERR}${FG_AMBER}${BOLD}$(t badge_standby) (${OLLAMA_VERSION}) ${BG_CARD}"
     fi
 
     buf_box_top "${FG_CYAN}"
@@ -462,7 +846,6 @@ begin_neural_frame() {
     buf_box_line "${sub_left}${RET_STR}${endpoint_right}" "${FG_CYAN}"
     buf_box_sep "${FG_DIM}"
 
-    # Telemetry Strip (reads cached RAM/GPU metrics)
     make_gauge_var "${RAM_PCT}" 10 "${FG_SKY}"
     local ram_gauge="${RET_STR}"
     truncate_plain_var "${GPU_NAME}" 34
@@ -479,11 +862,11 @@ begin_neural_frame() {
         vram_info="${FG_VIOLET}${BOLD}GPU${RST}${BG_CARD} ${FG_TEXT}${gpu_short}"
     fi
 
-    local hw_line="${FG_SKY}${BOLD}RAM${RST}${BG_CARD} ${ram_gauge} ${FG_TEXT}${RAM_USED_GB}/${RAM_TOTAL_GB}G  ${FG_DIM}│${BG_CARD}  ${vram_info}  ${FG_DIM}│${BG_CARD}  ${FG_CYAN}${BOLD}CPU${RST}${BG_CARD} ${FG_TEXT}${CPU_CORES}T  ${FG_DIM}│${BG_CARD}  ${FG_GREEN}${BOLD}MODELS${RST}${BG_CARD} ${FG_TEXT}${#INSTALLED_MODELS[@]}"
+    local hw_line="${FG_SKY}${BOLD}RAM${RST}${BG_CARD} ${ram_gauge} ${FG_TEXT}${RAM_USED_GB}/${RAM_TOTAL_GB}G  ${FG_DIM}│${BG_CARD}  ${vram_info}  ${FG_DIM}│${BG_CARD}  ${FG_CYAN}${BOLD}CPU${RST}${BG_CARD} ${FG_TEXT}${CPU_CORES}T  ${FG_DIM}│${BG_CARD}  ${FG_GREEN}${BOLD}$(t hw_models)${RST}${BG_CARD} ${FG_TEXT}${#INSTALLED_MODELS[@]}"
     buf_box_line "${hw_line}" "${FG_CYAN}"
 
     if [[ ${HAS_NVIDIA} -eq 1 ]]; then
-        buf_box_line "${FG_MUTED}ACCEL ${FG_DIM}▸ ${FG_TEXT}${gpu_short} ${FG_DIM}(CUDA Ready)${RST}${BG_CARD}" "${FG_CYAN}"
+        buf_box_line "${FG_MUTED}ACCEL ${FG_DIM}▸ ${FG_TEXT}${gpu_short} ${FG_DIM}$(t hw_cuda_ready)${RST}${BG_CARD}" "${FG_CYAN}"
     fi
     buf_box_bottom "${FG_CYAN}"
     buf_blank_line
@@ -528,7 +911,7 @@ show_notice() {
     done <<< "$(printf "%b" "${body}")"
 
     buf_box_sep "${FG_DIM}"
-    buf_box_line "${BG_PILL_CYAN}${FG_DARK}${BOLD}  [ ENTER / ESC ] CONTINUE  ${RST}${BG_CARD}" "${accent}"
+    buf_box_line "${BG_PILL_CYAN}${FG_DARK}${BOLD}$(t btn_continue)${RST}${BG_CARD}" "${accent}"
     buf_box_bottom "${accent}"
     flush_frame
 
@@ -557,16 +940,19 @@ ask_confirm() {
 
         buf_box_sep "${FG_DIM}"
         local btn_yes btn_no
+        local yes_txt no_txt
+        yes_txt="$(t btn_yes)"
+        no_txt="$(t btn_no)"
         if [[ ${sel} -eq 0 ]]; then
-            btn_yes="${BG_PILL_CYAN}${FG_DARK}${BOLD} ▸ CONFIRM (YES) ${RST}${BG_CARD}"
-            btn_no="${FG_MUTED}   CANCEL (NO)   ${RST}${BG_CARD}"
+            btn_yes="${BG_PILL_CYAN}${FG_DARK}${BOLD}${yes_txt}${RST}${BG_CARD}"
+            btn_no="${FG_MUTED}  ${no_txt:2}${RST}${BG_CARD}"
         else
-            btn_yes="${FG_MUTED}   CONFIRM (YES)   ${RST}${BG_CARD}"
-            btn_no="${BG_PILL_VIO}${FG_TEXT}${BOLD} ▸ CANCEL (NO)   ${RST}${BG_CARD}"
+            btn_yes="${FG_MUTED}  ${yes_txt:2}${RST}${BG_CARD}"
+            btn_no="${BG_PILL_VIO}${FG_TEXT}${BOLD}${no_txt}${RST}${BG_CARD}"
         fi
         buf_box_line "${btn_yes}    ${btn_no}" "${FG_AMBER}"
         buf_box_bottom "${FG_AMBER}"
-        buf_footer_hints "[←/→] Toggle   [Enter] Confirm   [Esc] Cancel"
+        buf_footer_hints "$(t hint_confirm)"
         flush_frame
 
         local k
@@ -600,11 +986,10 @@ prompt_input() {
     done <<< "$(printf "%b" "${prompt_txt}")"
 
     buf_box_line "" "${FG_VIOLET}"
-    buf_box_line "${FG_MUTED}Tekan [Enter] untuk lanjut, atau kosongkan lalu [Enter] untuk batal.${RST}${BG_CARD}" "${FG_VIOLET}"
+    buf_box_line "${FG_MUTED}$(t prompt_cancel_hint)${RST}${BG_CARD}" "${FG_VIOLET}"
     buf_box_bottom "${FG_VIOLET}"
     flush_frame
 
-    # Aktifkan mode ketik normal & tampilkan kursor
     stty sane 2>/dev/null || true
     printf "%s%s\n" "${BG_MAIN}" "${CUR_SHOW}"
 
@@ -635,7 +1020,6 @@ prompt_input() {
         fi
     fi
 
-    # Kembalikan mode raw TUI agar navigasi panah menu tidak memunculkan ^[[A
     stty -echo -icanon min 1 time 0 2>/dev/null || true
     printf "%s" "${CUR_HIDE}"
 
@@ -644,52 +1028,40 @@ prompt_input() {
 }
 
 # ==============================================================================
-# 5. INTERACTIVE OLLAMA INSTALLER & SERVICE CONTROLLER
+# 6. INTERACTIVE OLLAMA INSTALLER & SERVICE CONTROLLER
 # ==============================================================================
 workflow_install_ollama() {
-    local lang
-    lang="$(get_lang)"
-
-    local title prompt_pw
-    if [[ "${lang}" == "id" ]]; then
-        title="NEURAL RUNTIME INSTALLER"
-        prompt_pw="Installer resmi Ollama akan dijalankan:\n  curl -fsSL https://ollama.com/install.sh | sh\n\nMasukkan password sudo Linux Anda (kosongkan jika passwordless sudo):"
-    else
-        title="NEURAL RUNTIME INSTALLER"
-        prompt_pw="The official Ollama installer will execute:\n  curl -fsSL https://ollama.com/install.sh | sh\n\nEnter your Linux sudo password (leave blank if passwordless sudo):"
-    fi
-
     local sudo_pw=""
     if ! sudo -n true 2>/dev/null; then
-        prompt_input "${title}" "${prompt_pw}" "" 1 || return
+        prompt_input "$(t install_title)" "$(t install_prompt)" "" 1 || return
         sudo_pw="${RET_INPUT}"
     fi
 
     leave_tui
     printf "%s\033[H\033[2J" "${BG_MAIN}"
-    echo -e "${BG_PILL_CYAN}${FG_DARK}${BOLD}  ◈ ARI-DEV NEURAL RUNTIME INSTALLER  ${RST}\n"
+    echo -e "${BG_PILL_CYAN}${FG_DARK}${BOLD}$(t install_banner)${RST}\n"
 
     if [[ -n "${sudo_pw}" ]]; then
         if ! printf "%s\n" "${sudo_pw}" | sudo -S -v 2>/dev/null; then
-            echo -e "${FG_RED}[✕] Password sudo salah / Incorrect sudo password.${RST}"
-            read -rp "Press Enter to continue..."
+            echo -e "${FG_RED}$(t install_bad_pw)${RST}"
+            read -rp "$(t press_enter_cont)"
             enter_tui
             return
         fi
     fi
 
-    echo -e "${FG_CYAN}[1/3] Downloading & executing official Ollama runtime installer...${RST}"
+    echo -e "${FG_CYAN}$(t install_s1)${RST}"
     curl -fsSL https://ollama.com/install.sh | sh
     local install_rc=$?
 
     if [[ ${install_rc} -ne 0 ]]; then
-        echo -e "\n${FG_RED}[✕] Installer exited with code ${install_rc}.${RST}"
-        read -rp "Press Enter to continue..."
+        echo -e "\n${FG_RED}$(t install_fail) ${install_rc}.${RST}"
+        read -rp "$(t press_enter_cont)"
         enter_tui
         return
     fi
 
-    echo -e "\n${FG_CYAN}[2/3] Enabling & starting systemd neural daemon...${RST}"
+    echo -e "\n${FG_CYAN}$(t install_s2)${RST}"
     if [[ -n "${sudo_pw}" ]]; then
         printf "%s\n" "${sudo_pw}" | sudo -S systemctl enable --now ollama 2>/dev/null || true
     else
@@ -698,11 +1070,11 @@ workflow_install_ollama() {
 
     sleep 1
     if ! curl -sf --max-time 2 "${OLLAMA_BASE_URL}/api/tags" >/dev/null 2>&1; then
-        echo -e "${FG_MUTED}  Launching fallback daemon: ollama serve &${RST}"
+        echo -e "${FG_MUTED}$(t install_fallback)${RST}"
         nohup ollama serve >/dev/null 2>&1 &
     fi
 
-    echo -e "\n${FG_CYAN}[3/3] Handshaking with local API http://127.0.0.1:11434 ...${RST}"
+    echo -e "\n${FG_CYAN}$(t install_s3)${RST}"
     local ready=0
     for _ in $(seq 1 15); do
         if curl -sf --max-time 2 "${OLLAMA_BASE_URL}/api/tags" >/dev/null 2>&1; then
@@ -713,9 +1085,9 @@ workflow_install_ollama() {
     done
 
     if [[ ${ready} -eq 1 ]]; then
-        echo -e "\n${FG_GREEN}${BOLD}✓ SUCCESS! Neural Engine active at ${OLLAMA_BASE_URL}.${RST}"
+        echo -e "\n${FG_GREEN}${BOLD}$(t install_ok) ${OLLAMA_BASE_URL}.${RST}"
     else
-        echo -e "\n${FG_AMBER}▲ Installed, but daemon did not respond yet. Toggle service from dashboard.${RST}"
+        echo -e "\n${FG_AMBER}$(t install_warn)${RST}"
     fi
     sleep 1.5
     enter_tui
@@ -732,22 +1104,22 @@ toggle_ollama_service() {
 
     leave_tui
     printf "%s\033[H\033[2J" "${BG_MAIN}"
-    echo -e "${BG_PILL_VIO}${FG_TEXT}${BOLD}  ◈ ARI-DEV NEURAL SERVICE CONTROLLER  ${RST}\n"
+    echo -e "${BG_PILL_VIO}${FG_TEXT}${BOLD}$(t svc_banner)${RST}\n"
 
     if [[ ${OLLAMA_RUNNING} -eq 0 || ${force_start} -eq 1 ]]; then
-        echo -e "${FG_CYAN}[▸] Igniting Ollama background service...${RST}"
+        echo -e "${FG_CYAN}$(t svc_starting)${RST}"
         sudo -n systemctl start ollama 2>/dev/null || true
         sleep 1
         if ! curl -sf --max-time 2 "${OLLAMA_BASE_URL}/api/tags" >/dev/null 2>&1; then
             nohup ollama serve >/dev/null 2>&1 &
             sleep 2
         fi
-        echo -e "${FG_GREEN}[✓] Neural Engine is now ONLINE.${RST}"
+        echo -e "${FG_GREEN}$(t svc_online)${RST}"
     else
-        echo -e "${FG_AMBER}[▸] Suspending Ollama background service...${RST}"
+        echo -e "${FG_AMBER}$(t svc_stopping)${RST}"
         sudo -n systemctl stop ollama 2>/dev/null || pkill -x ollama 2>/dev/null || true
         sleep 1
-        echo -e "${FG_AMBER}[✓] Neural Engine is now STANDBY.${RST}"
+        echo -e "${FG_AMBER}$(t svc_standby)${RST}"
     fi
     sleep 1
     enter_tui
@@ -759,34 +1131,36 @@ pull_model_live() {
 
     leave_tui
     printf "%s\033[H\033[2J" "${BG_MAIN}"
-    echo -e "${BG_PILL_CYAN}${FG_DARK}${BOLD}  ◈ NEURAL WEIGHTS DOWNLOADER: ${model_name}  ${RST}\n"
+    echo -e "${BG_PILL_CYAN}${FG_DARK}${BOLD}$(t pull_banner) ${model_name}  ${RST}\n"
 
-    echo -e "${FG_CYAN}[1/4] Memeriksa runtime Ollama...${RST}"
+    echo -e "${FG_CYAN}$(t pull_s1)${RST}"
     detect_ollama_state
     if [[ ${OLLAMA_INSTALLED} -eq 0 ]]; then
-        echo -e "${FG_AMBER}  ▸ Ollama belum terpasang, membuka installer...${RST}"
+        echo -e "${FG_AMBER}$(t pull_not_inst)${RST}"
         workflow_install_ollama
         detect_ollama_state
         if [[ ${OLLAMA_INSTALLED} -eq 0 ]]; then
-            echo -e "${FG_RED}[✕] Runtime Ollama tidak tersedia. Proses dibatalkan.${RST}"
-            read -rp "Tekan Enter untuk kembali..."
+            echo -e "${FG_RED}$(t pull_no_rt)${RST}"
+            read -rp "$(t pull_back)"
             enter_tui
             return
         fi
     fi
-    echo -e "${FG_GREEN}  ✓ Runtime terdeteksi (${OLLAMA_VERSION})${RST}"
+    echo -e "${FG_GREEN}$(t pull_rt_ok) (${OLLAMA_VERSION})${RST}"
 
-    echo -e "\n${FG_CYAN}[2/4] Memeriksa status daemon Ollama (${OLLAMA_BASE_URL})...${RST}"
+    echo -e "\n${FG_CYAN}$(t pull_s2) (${OLLAMA_BASE_URL})...${RST}"
     if [[ ${OLLAMA_RUNNING} -eq 0 ]]; then
-        echo -e "${FG_AMBER}  ▸ Daemon standby, menyalakan service Ollama...${RST}"
+        echo -e "${FG_AMBER}$(t pull_start_d)${RST}"
         sudo -n systemctl start ollama 2>/dev/null || true
         if ! curl -sf --max-time 2 "${OLLAMA_BASE_URL}/api/tags" >/dev/null 2>&1; then
             nohup ollama serve >/dev/null 2>&1 &
         fi
 
         local ready=0
+        local wait_lbl
+        wait_lbl="$(t pull_wait_api)"
         for sec in $(seq 1 10); do
-            printf "\r${FG_MUTED}  ▸ Menunggu API siap (%ds/10s)...${RST}" "${sec}"
+            printf "\r${FG_MUTED}%s (%ds/10s)...${RST}" "${wait_lbl}" "${sec}"
             if curl -sf --max-time 1 "${OLLAMA_BASE_URL}/api/tags" >/dev/null 2>&1; then
                 ready=1
                 break
@@ -796,16 +1170,16 @@ pull_model_live() {
         echo ""
 
         if [[ ${ready} -eq 0 ]]; then
-            echo -e "${FG_RED}[✕] Daemon Ollama gagal merespons di ${OLLAMA_BASE_URL}.${RST}"
-            read -rp "Tekan Enter untuk kembali..."
+            echo -e "${FG_RED}$(t pull_d_fail) ${OLLAMA_BASE_URL}.${RST}"
+            read -rp "$(t pull_back)"
             enter_tui
             return
         fi
     fi
-    echo -e "${FG_GREEN}  ✓ Neural Daemon ONLINE${RST}"
+    echo -e "${FG_GREEN}$(t pull_d_ok)${RST}"
 
-    echo -e "\n${FG_CYAN}[3/4] Menghubungi Ollama Registry & mengunduh '${model_name}'...${RST}"
-    echo -e "${FG_MUTED}  ▸ Mengambil manifest & layer dari registry.ollama.ai (tekan Ctrl+C untuk batal)${RST}\n"
+    echo -e "\n${FG_CYAN}$(t pull_s3) '${model_name}'...${RST}"
+    echo -e "${FG_MUTED}$(t pull_manifest)${RST}\n"
 
     local pull_aborted=0
     trap 'pull_aborted=1' INT
@@ -813,39 +1187,30 @@ pull_model_live() {
     local rc=$?
     trap cleanup EXIT INT TERM
 
-    echo -e "\n${FG_CYAN}[4/4] Verifikasi akhir...${RST}"
+    echo -e "\n${FG_CYAN}$(t pull_s4)${RST}"
     if [[ ${pull_aborted} -eq 1 ]]; then
-        echo -e "${FG_AMBER}[!] Proses unduh dibatalkan oleh pengguna.${RST}"
+        echo -e "${FG_AMBER}$(t pull_aborted)${RST}"
     elif [[ ${rc} -eq 0 ]]; then
         detect_ollama_state
-        echo -e "${FG_GREEN}${BOLD}[✓] Model '${model_name}' siap digunakan! (Total lokal: ${#INSTALLED_MODELS[@]} model)${RST}"
+        echo -e "${FG_GREEN}${BOLD}$(t pull_ready_1) '${model_name}' $(t pull_ready_2) ${#INSTALLED_MODELS[@]} $(t pull_ready_3)${RST}"
     else
-        echo -e "${FG_RED}${BOLD}[✕] Gagal mengunduh '${model_name}' (exit code: ${rc}). Pastikan nama tag valid.${RST}"
+        echo -e "${FG_RED}${BOLD}$(t pull_err_1) '${model_name}' (exit code: ${rc}). $(t pull_err_2)${RST}"
     fi
 
     echo ""
-    read -rp "Tekan Enter untuk kembali ke dashboard..."
+    read -rp "$(t pull_back)"
     enter_tui
 }
 
 delete_model_prompt() {
     local model_name="$1"
-    local lang
-    lang="$(get_lang)"
+    local msg
+    msg="$(t del_msg)\n\n  ◆ ${model_name}"
 
-    local title msg
-    if [[ "${lang}" == "id" ]]; then
-        title="PURGE MODEL WEIGHTS"
-        msg="Hapus permanen model berikut dari penyimpanan lokal?\n\n  ◆ ${model_name}"
-    else
-        title="PURGE MODEL WEIGHTS"
-        msg="Permanently remove this model from local storage?\n\n  ◆ ${model_name}"
-    fi
-
-    if ask_confirm "${title}" "${msg}"; then
+    if ask_confirm "$(t del_title)" "${msg}"; then
         leave_tui
         printf "%s\033[H\033[2J" "${BG_MAIN}"
-        echo -e "${FG_AMBER}[▸] Purging ${model_name}...${RST}"
+        echo -e "${FG_AMBER}$(t del_purging) ${model_name}...${RST}"
         ollama rm "${model_name}"
         sleep 1
         enter_tui
@@ -853,7 +1218,7 @@ delete_model_prompt() {
 }
 
 # ==============================================================================
-# 6. FUTURISTIC STREAMING NEURAL CHAT (MARKDOWN FORMATTER & CODE COPY)
+# 7. FUTURISTIC STREAMING NEURAL CHAT (MARKDOWN FORMATTER & CODE COPY)
 # ==============================================================================
 style_inline_md() {
     local s="$1"
@@ -877,12 +1242,10 @@ style_inline_md() {
 
 open_local_chat() {
     local model_name="$1"
-    local lang
-    lang="$(get_lang)"
 
     detect_ollama_state
     if [[ ${OLLAMA_RUNNING} -eq 0 ]]; then
-        show_notice "ENGINE STANDBY" "Ollama service sedang berhenti.\nJalankan 'Start / Stop Ollama Service' terlebih dahulu." "${FG_AMBER}"
+        show_notice "ENGINE STANDBY" "$(t chat_standby_body)" "${FG_AMBER}"
         return
     fi
 
@@ -890,11 +1253,7 @@ open_local_chat() {
     printf "%s\033[H\033[2J" "${BG_MAIN}"
     echo -e "${FG_CYAN}${BOLD}╭──────────────────────────────────────────────────────────────────────────────────────╮${RST}"
     echo -e "${FG_CYAN}${BOLD}│ ◈ NEURAL STREAMING SESSION  ${FG_DIM}•  ${FG_VIOLET}MODEL: ${FG_TEXT}${model_name}${RST}"
-    if [[ "${lang}" == "id" ]]; then
-        echo -e "${FG_CYAN}${BOLD}│ ${FG_MUTED}Perintah: ${FG_SKY}/copy [n]${FG_MUTED} (salin kode) • ${FG_SKY}/last${FG_MUTED} (salin teks) • ${FG_SKY}/clear${FG_MUTED} • ${FG_SKY}/exit${RST}"
-    else
-        echo -e "${FG_CYAN}${BOLD}│ ${FG_MUTED}Commands: ${FG_SKY}/copy [n]${FG_MUTED} (copy code) • ${FG_SKY}/last${FG_MUTED} (copy reply) • ${FG_SKY}/clear${FG_MUTED} • ${FG_SKY}/exit${RST}"
-    fi
+    echo -e "${FG_CYAN}${BOLD}│ ${FG_MUTED}$(t chat_cmds)${RST}"
     echo -e "${FG_CYAN}${BOLD}╰──────────────────────────────────────────────────────────────────────────────────────╯${RST}\n"
 
     local history_json="[]"
@@ -912,7 +1271,6 @@ open_local_chat() {
         local raw_line="${1%$'\r'}"
         local trimmed_line="${raw_line#"${raw_line%%[![:space:]]*}"}"
 
-        # Deteksi pembuka / penutup blok kode
         if [[ "${trimmed_line}" == "${fence}"* ]]; then
             local fence_lang="${trimmed_line#"${fence}"}"
             fence_lang="$(echo "${fence_lang}" | xargs)"
@@ -926,26 +1284,23 @@ open_local_chat() {
                     "${FG_CYAN}" "${FG_VIOLET}${BOLD}" "${code_idx}" "${fence_lang}" "${RST}"
             else
                 in_code=0
-                printf "%s│ %s└─ [Ketik /copy atau /copy %d untuk salin kode] ──────────────────────%s\n" \
-                    "${FG_CYAN}" "${FG_MUTED}" "${code_idx}" "${RST}"
+                printf "%s│ %s%s %d %s ──────────────────────%s\n" \
+                    "${FG_CYAN}" "${FG_MUTED}" "$(t chat_code_hint_pre)" "${code_idx}" "$(t chat_code_hint_post)" "${RST}"
             fi
             return
         fi
 
-        # Konten di dalam blok kode
         if [[ ${in_code} -eq 1 ]]; then
             printf "%s\n" "${raw_line}" >> "${TMP_DIR}/code_${code_idx}.txt"
             printf "%s│ %s│ %s%s%s\n" "${FG_CYAN}" "${FG_VIOLET}" "${FG_SKY}" "${raw_line}" "${RST}"
             return
         fi
 
-        # Baris kosong di luar blok kode
         if [[ -z "${raw_line}" ]]; then
             printf "%s│%s\n" "${FG_CYAN}" "${RST}"
             return
         fi
 
-        # Deteksi heading Markdown (#, ##, ###)
         local is_heading=0
         local clean_line="${raw_line}"
         if [[ "${trimmed_line}" =~ ^#{1,4}[[:space:]]+(.*)$ ]]; then
@@ -953,7 +1308,6 @@ open_local_chat() {
             clean_line="▸ ${BASH_REMATCH[1]}"
         fi
 
-        # Word-wrap rapi agar tidak terpotong di tengah kata
         while IFS= read -r wline; do
             if [[ ${is_heading} -eq 1 ]]; then
                 printf "%s│ %s%s%s%s\n" "${FG_CYAN}" "${FG_CYAN}${BOLD}" "${wline}" "${RST}"
@@ -978,34 +1332,32 @@ open_local_chat() {
             history_json="[]"
             turn_count=0
             last_code_count=0
-            echo -e "${FG_AMBER}[✦] Neural context window cleared.${RST}\n"
+            echo -e "${FG_AMBER}$(t chat_cleared)${RST}\n"
             continue
         fi
 
-        # Fitur salin seluruh respons terakhir
         if [[ "${user_input}" == "/last" ]]; then
             if [[ -s "${TMP_DIR}/last_reply.txt" ]]; then
                 local full_txt
                 full_txt="$(cat "${TMP_DIR}/last_reply.txt")"
                 if copy_to_clipboard "${full_txt}"; then
-                    echo -e "${FG_GREEN}[✓] Seluruh respons terakhir berhasil disalin ke clipboard!${RST}\n"
+                    echo -e "${FG_GREEN}$(t chat_last_ok)${RST}\n"
                 else
-                    echo -e "${FG_AMBER}[!] Clipboard tool (xclip/wl-copy) belum terpasang. Install: sudo apt install xclip${RST}\n"
+                    echo -e "${FG_AMBER}$(t chat_no_clip)${RST}\n"
                 fi
             else
-                echo -e "${FG_AMBER}[!] Belum ada respons AI untuk disalin.${RST}\n"
+                echo -e "${FG_AMBER}$(t chat_no_reply)${RST}\n"
             fi
             continue
         fi
 
-        # Fitur salin blok kode (/copy, /copy 1, /copy 2, /copy all)
         case "${user_input}" in
             /copy|/copy\ *)
                 local arg="${user_input#/copy}"
                 arg="$(echo "${arg}" | xargs)"
 
                 if [[ ${last_code_count} -eq 0 ]]; then
-                    echo -e "${FG_AMBER}[!] Tidak ditemukan blok kode pada respons terakhir.${RST}\n"
+                    echo -e "${FG_AMBER}$(t chat_no_code)${RST}\n"
                     continue
                 fi
 
@@ -1015,9 +1367,9 @@ open_local_chat() {
                         [[ -f "${TMP_DIR}/code_${c}.txt" ]] && all_code+="$(cat "${TMP_DIR}/code_${c}.txt")"$'\n\n'
                     done
                     if copy_to_clipboard "${all_code}"; then
-                        echo -e "${FG_GREEN}[✓] Semua (${last_code_count}) blok kode berhasil disalin ke clipboard!${RST}\n"
+                        echo -e "${FG_GREEN}$(t chat_copy_all_1)${last_code_count}$(t chat_copy_all_2)${RST}\n"
                     else
-                        echo -e "${FG_AMBER}[!] Clipboard tool (xclip/wl-copy) belum terpasang. Install: sudo apt install xclip${RST}\n"
+                        echo -e "${FG_AMBER}$(t chat_no_clip)${RST}\n"
                     fi
                     continue
                 fi
@@ -1027,7 +1379,7 @@ open_local_chat() {
                     if [[ "${arg}" =~ ^[0-9]+$ && "${arg}" -ge 1 && "${arg}" -le ${last_code_count} ]]; then
                         target_idx=${arg}
                     else
-                        echo -e "${FG_RED}[✕] Nomor blok kode tidak valid. Tersedia: 1 s/d ${last_code_count}.${RST}\n"
+                        echo -e "${FG_RED}$(t chat_bad_idx) ${last_code_count}.${RST}\n"
                         continue
                     fi
                 fi
@@ -1038,16 +1390,15 @@ open_local_chat() {
                     code_content="$(cat "${code_file}")"
                     line_cnt="$(wc -l < "${code_file}" | xargs)"
                     if copy_to_clipboard "${code_content}"; then
-                        echo -e "${FG_GREEN}[✓] Code #${target_idx} (${last_code_langs[${target_idx}]:-code}, ${line_cnt} baris) berhasil disalin ke clipboard!${RST}\n"
+                        echo -e "${FG_GREEN}[✓] Code #${target_idx} (${last_code_langs[${target_idx}]:-code}, ${line_cnt} $(t chat_lines)) $(t chat_copied_clip)${RST}\n"
                     else
-                        echo -e "${FG_AMBER}[!] Install xclip (sudo apt install xclip) untuk auto-clipboard. File tersimpan di: ${code_file}${RST}\n"
+                        echo -e "${FG_AMBER}$(t chat_saved_file) ${code_file}${RST}\n"
                     fi
                 fi
                 continue
                 ;;
         esac
 
-        # Hitung lebar wrap adaptif mengikuti terminal saat ini
         local cols="${COLUMNS:-0}"
         [[ ${cols} -le 0 ]] && cols="$(tput cols 2>/dev/null || echo 96)"
         wrap_w=$((cols - 6))
@@ -1110,21 +1461,21 @@ open_local_chat() {
         fi
         if [[ ${in_code} -eq 1 ]]; then
             in_code=0
-            printf "%s│ %s└─ [Ketik /copy atau /copy %d untuk salin kode] ──────────────────────%s\n" \
-                "${FG_CYAN}" "${FG_MUTED}" "${code_idx}" "${RST}"
+            printf "%s│ %s%s %d %s ──────────────────────%s\n" \
+                "${FG_CYAN}" "${FG_MUTED}" "$(t chat_code_hint_pre)" "${code_idx}" "$(t chat_code_hint_post)" "${RST}"
         fi
 
         last_code_count=${code_idx}
 
         local code_hint=""
         if [[ ${last_code_count} -gt 0 ]]; then
-            code_hint="  ${FG_DIM}│  ${FG_VIOLET}${last_code_count} code block(s) ready (/copy)"
+            code_hint="  ${FG_DIM}│  ${FG_VIOLET}${last_code_count} $(t chat_blocks_ready)"
         fi
 
         if [[ -s "${stats_file}" ]]; then
             printf "%s╰─ ✦ %s%s%s%s\n\n" "${FG_CYAN}" "${FG_GREEN}" "$(cat "${stats_file}")" "${code_hint}" "${RST}"
         else
-            printf "%s╰─ ✦ Stream complete%s%s\n\n" "${FG_CYAN}" "${code_hint}" "${RST}"
+            printf "%s╰─ ✦ %s%s%s\n\n" "${FG_CYAN}" "$(t chat_stream_done)" "${code_hint}" "${RST}"
         fi
 
         if [[ "${HAS_JQ}" -eq 1 && -s "${reply_file}" ]]; then
@@ -1138,7 +1489,7 @@ open_local_chat() {
 }
 
 # ==============================================================================
-# 7. MODEL STORE & HARDWARE MATCHING (models_db.json)
+# 8. MODEL STORE & HARDWARE MATCHING (models_db.json)
 # ==============================================================================
 WRAP_LINES=()
 wrap_text_var() {
@@ -1163,7 +1514,7 @@ wrap_text_var() {
 }
 
 get_scored_models_lines() {
-    local lang="$1"
+    local lang="${1:-${CURRENT_LANG}}"
     local desc_field="description_${lang}"
 
     if [[ "${HAS_JQ}" -eq 1 ]]; then
@@ -1175,13 +1526,23 @@ get_scored_models_lines() {
             echo "${score}|${tier}|${name}|${size}|${mram}G/${mvram}G|${cat}|${desc}"
         done | sort -t'|' -k1,1nr
     else
-        echo "3|optimal|qwen2.5-coder:1.5b-instruct|986 MB|4G/2G|Coding / Light|Sangat cepat & ringan untuk coding harian."
-        echo "3|optimal|gemma2:2b|1.6 GB|6G/3G|General / Light|Responsif & pemahaman bahasa Indonesia bagus."
-        echo "3|optimal|qwen2.5-coder:3b|1.9 GB|8G/3G|Coding / Medium|Seimbang untuk code completion & refactoring."
-        echo "2|compat|phi3:3.8b|2.2 GB|8G/4G|Reasoning / Medium|Kuat untuk penalaran logika, matematika & koding."
-        echo "2|compat|llama3.2:3b|2.0 GB|8G/4G|General / Medium|Cerdas untuk asisten teks umum & ringkasan."
-        echo "1|compat|qwen2.5:7b-instruct|4.7 GB|16G/6G|General / Heavy|Performa tinggi untuk tugas kompleks."
-        echo "1|compat|deepseek-r1:7b|4.7 GB|16G/6G|Reasoning / Heavy|Model reasoning mendalam bertahap."
+        if [[ "${lang}" == "en" ]]; then
+            echo "3|optimal|qwen2.5-coder:1.5b-instruct|986 MB|4G/2G|Coding / Light|Ultra-fast & lightweight for daily coding & autocomplete."
+            echo "3|optimal|gemma2:2b|1.6 GB|6G/3G|General / Light|Responsive general chat with strong Indonesian comprehension."
+            echo "3|optimal|qwen2.5-coder:3b|1.9 GB|8G/3G|Coding / Medium|Balanced for code completion, refactoring & debugging."
+            echo "2|compat|phi3:3.8b|2.2 GB|8G/4G|Reasoning / Medium|Strong for logical reasoning, math & code analysis."
+            echo "2|compat|llama3.2:3b|2.0 GB|8G/4G|General / Medium|Smart general text assistant, summaries & instructions."
+            echo "1|compat|qwen2.5:7b-instruct|4.7 GB|16G/6G|General / Heavy|High capability for complex tasks (hybrid GPU+RAM)."
+            echo "1|compat|deepseek-r1:7b|4.7 GB|16G/6G|Reasoning / Heavy|Deep-reasoning model with step-by-step chain of thought."
+        else
+            echo "3|optimal|qwen2.5-coder:1.5b-instruct|986 MB|4G/2G|Coding / Light|Sangat cepat & ringan untuk autocomplete & coding harian."
+            echo "3|optimal|gemma2:2b|1.6 GB|6G/3G|General / Light|Responsif, general chat & pemahaman bahasa Indonesia bagus."
+            echo "3|optimal|qwen2.5-coder:3b|1.9 GB|8G/3G|Coding / Medium|Seimbang untuk code completion, refactoring & debugging."
+            echo "2|compat|phi3:3.8b|2.2 GB|8G/4G|Reasoning / Medium|Kuat untuk penalaran logika, matematika & analisis kode."
+            echo "2|compat|llama3.2:3b|2.0 GB|8G/4G|General / Medium|Cerdas untuk asisten teks umum, ringkasan & instruksi."
+            echo "1|compat|qwen2.5:7b-instruct|4.7 GB|16G/6G|General / Heavy|Performa tinggi untuk tugas kompleks (hybrid GPU+RAM)."
+            echo "1|compat|deepseek-r1:7b|4.7 GB|16G/6G|Reasoning / Heavy|Model deep-reasoning dengan alur berpikir bertahap."
+        fi
     fi
 }
 
@@ -1258,9 +1619,8 @@ menu_model_store() {
         [[ ${cursor} -ge ${total} && ${total} -gt 0 ]] && cursor=$((total - 1))
         [[ ${total} -eq 0 ]] && cursor=0
 
-        begin_neural_frame "NEURAL MODEL STORE • HARDWARE MATCHED (${RAM_TOTAL_GB}G RAM / ${VRAM_TOTAL_GB}G VRAM)"
+        begin_neural_frame "$(t store_sub) (${RAM_TOTAL_GB}G RAM / ${VRAM_TOTAL_GB}G VRAM)"
 
-        # Kapasitas baris 1-line item agar header RAM/VRAM atas selalu tampil penuh
         local rows="${LINES:-0}"
         if [[ ${rows} -le 0 ]]; then
             rows="$(tput lines 2>/dev/null)"
@@ -1298,8 +1658,8 @@ menu_model_store() {
 
         local item_stat="0/0"
         [[ ${total} -gt 0 ]] && item_stat="$((cursor + 1))/${total}"
-        local hdr_left="${FG_VIOLET}${BOLD}◈ CURATED NEURAL MODELS  ${FG_DIM}•  ${FG_AMBER}[FILTER: ${cur_filter}]${RST}${BG_CARD}"
-        local hdr_right="${FG_MUTED}ITEM ${FG_CYAN}${item_stat}${FG_MUTED}  •  PAGE ${cur_page}/${total_pages}${RST}${BG_CARD}"
+        local hdr_left="${FG_VIOLET}${BOLD}$(t store_hdr)  ${FG_DIM}•  ${FG_AMBER}[FILTER: ${cur_filter}]${RST}${BG_CARD}"
+        local hdr_right="${FG_MUTED}ITEM ${FG_CYAN}${item_stat}${FG_MUTED}  •  $(t store_page) ${cur_page}/${total_pages}${RST}${BG_CARD}"
 
         strip_ansi_len "${hdr_left}"
         local hl_len=${RET_LEN}
@@ -1312,7 +1672,7 @@ menu_model_store() {
         buf_box_sep "${FG_DIM}"
 
         if [[ ${total} -eq 0 ]]; then
-            buf_box_line "${FG_AMBER}  Tidak ada model untuk kategori '${cur_filter}'. Tekan [F] untuk ganti filter.${RST}${BG_CARD}" "${FG_VIOLET}"
+            buf_box_line "${FG_AMBER}$(t store_empty_1) '${cur_filter}'. $(t store_empty_2)${RST}${BG_CARD}" "${FG_VIOLET}"
         else
             for ((i = offset; i < end_idx; i++)); do
                 local mname="${names[$i]}"
@@ -1346,7 +1706,7 @@ menu_model_store() {
                     local iname="${im%%|*}"
                     case "${iname}" in
                         "${mname}"|"${mname}:"*)
-                            inst_tag="${FG_GREEN}${BOLD}✓ INSTALLED${RST}"
+                            inst_tag="${FG_GREEN}${BOLD}$(t store_installed_badge)${RST}"
                             break
                             ;;
                     esac
@@ -1377,7 +1737,6 @@ menu_model_store() {
                 buf_box_line "${left_part}${RET_STR}${right_part}" "${FG_VIOLET}" "${row_bg}"
             done
 
-            # Panel FULL INFO dengan Category, spesifikasi, status & deskripsi lengkap
             local sel_name="${names[$cursor]}"
             local sel_cat="${cats[$cursor]}"
             local sel_size="${sizes[$cursor]}"
@@ -1385,24 +1744,24 @@ menu_model_store() {
             local sel_tier="${tiers[$cursor]}"
             local sel_desc="${descs[$cursor]}"
 
-            local sel_fit_lbl="${FG_SKY}Compatible (Hybrid)"
-            [[ "${sel_tier}" == "optimal" ]] && sel_fit_lbl="${FG_GREEN}Optimal (GPU Fit)"
-            [[ "${sel_tier}" == "heavy" ]] && sel_fit_lbl="${FG_RED}Heavy (High RAM)"
+            local sel_fit_lbl="${FG_SKY}$(t store_fit_cmp)"
+            [[ "${sel_tier}" == "optimal" ]] && sel_fit_lbl="${FG_GREEN}$(t store_fit_opt)"
+            [[ "${sel_tier}" == "heavy" ]] && sel_fit_lbl="${FG_RED}$(t store_fit_hvy)"
 
-            local sel_status_lbl="${FG_AMBER}Not Installed"
+            local sel_status_lbl="${FG_AMBER}$(t store_st_not)"
             for im in "${INSTALLED_MODELS[@]}"; do
                 local iname="${im%%|*}"
                 case "${iname}" in
                     "${sel_name}"|"${sel_name}:"*)
-                        sel_status_lbl="${FG_GREEN}${BOLD}Installed"
+                        sel_status_lbl="${FG_GREEN}${BOLD}$(t store_st_inst)"
                         break
                         ;;
                 esac
             done
 
             buf_box_sep "${FG_DIM}"
-            buf_box_line "${FG_CYAN}${BOLD}◈ FULL INFO: ${FG_TEXT}${sel_name}  ${FG_DIM}•  ${FG_MUTED}Category: ${FG_VIOLET}${BOLD}${sel_cat}${RST}${BG_CARD}" "${FG_VIOLET}"
-            buf_box_line "  ${FG_MUTED}Size: ${FG_SKY}${sel_size}  ${FG_DIM}•  ${FG_MUTED}Min RAM/VRAM: ${FG_TEXT}${sel_req}  ${FG_DIM}•  ${FG_MUTED}Fit: ${sel_fit_lbl}  ${FG_DIM}•  ${FG_MUTED}Status: ${sel_status_lbl}${RST}${BG_CARD}" "${FG_VIOLET}"
+            buf_box_line "${FG_CYAN}${BOLD}◈ FULL INFO: ${FG_TEXT}${sel_name}  ${FG_DIM}•  ${FG_MUTED}$(t store_cat) ${FG_VIOLET}${BOLD}${sel_cat}${RST}${BG_CARD}" "${FG_VIOLET}"
+            buf_box_line "  ${FG_MUTED}$(t store_size) ${FG_SKY}${sel_size}  ${FG_DIM}•  ${FG_MUTED}Min RAM/VRAM: ${FG_TEXT}${sel_req}  ${FG_DIM}•  ${FG_MUTED}$(t store_fit) ${sel_fit_lbl}  ${FG_DIM}•  ${FG_MUTED}Status: ${sel_status_lbl}${RST}${BG_CARD}" "${FG_VIOLET}"
 
             wrap_text_var "${sel_desc}" $((BOX_W - 8))
             local f_line1="${WRAP_LINES[0]:-}"
@@ -1419,11 +1778,11 @@ menu_model_store() {
 
         local quick_hint=""
         if [[ ${visible_count} -gt 1 ]]; then
-            quick_hint="[1-${visible_count}] Page Select   "
+            quick_hint="$(t store_sel_many_pre)${visible_count}$(t store_sel_many_post)"
         elif [[ ${visible_count} -eq 1 ]]; then
-            quick_hint="[1] Page Select   "
+            quick_hint="$(t store_sel_one)"
         fi
-        buf_footer_hints "[↑/↓] Nav   [←/→] Page   [F] Filter: ${cur_filter}   [Enter] Install   ${quick_hint}[Esc/Q] Back"
+        buf_footer_hints "$(t store_hint_1) ${cur_filter}   $(t store_hint_2)   ${quick_hint}$(t store_hint_3)"
         flush_frame
 
         local k
@@ -1474,53 +1833,35 @@ menu_model_store() {
 }
 
 menu_custom_install() {
-    local lang
-    lang="$(get_lang)"
-
-    local title prompt
-    if [[ "${lang}" == "id" ]]; then
-        title="CUSTOM REGISTRY PULL"
-        prompt="Masukkan nama model & tag resmi dari https://ollama.com/library\nContoh: qwen2.5-coder:3b, llama3.2:3b, mistral:7b, nomic-embed-text"
-    else
-        title="CUSTOM REGISTRY PULL"
-        prompt="Enter official model name & tag from https://ollama.com/library\nExamples: qwen2.5-coder:3b, llama3.2:3b, mistral:7b, nomic-embed-text"
-    fi
-
-    prompt_input "${title}" "${prompt}" "" 0 || return
+    prompt_input "$(t custom_title)" "$(t custom_prompt)" "" 0 || return
     local model_tag
     model_tag="$(echo "${RET_INPUT}" | xargs)"
     if [[ -z "${model_tag}" ]]; then
-        show_notice "DIBATALKAN" "Input kosong — pengunduhan dibatalkan." "${FG_AMBER}"
+        show_notice "$(t custom_cancel_title)" "$(t custom_cancel_body)" "${FG_AMBER}"
         return
     fi
     pull_model_live "${model_tag}"
 }
 
 # ==============================================================================
-# 8. INSTALLED MODELS MANAGER (CHAT, INSPECT, COPY, DELETE)
+# 9. INSTALLED MODELS MANAGER (CHAT, INSPECT, COPY, DELETE)
 # ==============================================================================
 inspect_model_details() {
     local model_name="$1"
     local info_raw
     info_raw="$(ollama show "${model_name}" 2>/dev/null | head -n 16)"
-    [[ -z "${info_raw}" ]] && info_raw="Tidak dapat membaca metadata model '${model_name}'."
-    show_notice "MODEL ARCHITECTURE: ${model_name}" "${info_raw}" "${FG_SKY}"
+    [[ -z "${info_raw}" ]] && info_raw="$(t inspect_err) '${model_name}'."
+    show_notice "$(t inspect_title) ${model_name}" "${info_raw}" "${FG_SKY}"
 }
 
 menu_manage_installed() {
-    local lang
-    lang="$(get_lang)"
     local search_query=""
     local search_mode=0
 
     while true; do
         detect_ollama_state
         if [[ ${#INSTALLED_MODELS[@]} -eq 0 ]]; then
-            if [[ "${lang}" == "id" ]]; then
-                show_notice "NO LOCAL MODELS" "Belum ada model terinstall.\nGunakan 'Neural Model Store' untuk mengunduh model." "${FG_AMBER}"
-            else
-                show_notice "NO LOCAL MODELS" "No models installed yet.\nOpen 'Neural Model Store' to download weights." "${FG_AMBER}"
-            fi
+            show_notice "$(t vault_empty_title)" "$(t vault_empty_body)" "${FG_AMBER}"
             return
         fi
 
@@ -1529,7 +1870,6 @@ menu_manage_installed() {
         local offset=0
 
         while true; do
-            # Filter daftar model berdasarkan search_query (case-insensitive)
             local filtered_models=()
             if [[ -z "${search_query}" ]]; then
                 filtered_models=("${INSTALLED_MODELS[@]}")
@@ -1547,9 +1887,8 @@ menu_manage_installed() {
             [[ ${cursor} -ge ${total} && ${total} -gt 0 ]] && cursor=$((total - 1))
             [[ ${total} -eq 0 ]] && cursor=0
 
-            begin_neural_frame "LOCAL WEIGHTS VAULT • ${all_total} MODELS READY"
+            begin_neural_frame "$(t vault_sub_1) ${all_total} $(t vault_sub_2)"
 
-            # Hitung kapasitas baris adaptif agar kotak header atas tidak pernah terpotong
             local rows="${LINES:-0}"
             if [[ ${rows} -le 0 ]]; then
                 rows="$(tput lines 2>/dev/null)"
@@ -1585,11 +1924,10 @@ menu_manage_installed() {
 
             buf_box_top "${FG_CYAN}"
 
-            # Header kotak dengan indikator jumlah item & halaman
             local item_stat="0/0"
             [[ ${total} -gt 0 ]] && item_stat="$((cursor + 1))/${total}"
-            local hdr_left="${FG_CYAN}${BOLD}◈ INSTALLED NEURAL MODELS${RST}${BG_CARD}"
-            local hdr_right="${FG_MUTED}ITEM ${FG_CYAN}${item_stat}${FG_MUTED}  •  PAGE ${cur_page}/${total_pages}${RST}${BG_CARD}"
+            local hdr_left="${FG_CYAN}${BOLD}$(t vault_hdr)${RST}${BG_CARD}"
+            local hdr_right="${FG_MUTED}ITEM ${FG_CYAN}${item_stat}${FG_MUTED}  •  $(t store_page) ${cur_page}/${total_pages}${RST}${BG_CARD}"
 
             strip_ansi_len "${hdr_left}"
             local hl_len=${RET_LEN}
@@ -1601,20 +1939,19 @@ menu_manage_installed() {
             buf_box_line "${hdr_left}${RET_STR}${hdr_right}" "${FG_CYAN}"
             buf_box_sep "${FG_DIM}"
 
-            # Baris pencarian interaktif
             local search_line=""
             if [[ ${search_mode} -eq 1 ]]; then
-                search_line="${FG_CYAN}${BOLD}⌕ SEARCH:${RST}${BG_CARD} ${FG_TEXT}${search_query}${BG_PILL_CYAN}${FG_DARK}${BOLD} ${RST}${BG_CARD}   ${FG_MUTED}(Ketik nama • [Enter] Terapkan • [Esc] Reset)${RST}${BG_CARD}"
+                search_line="${FG_CYAN}${BOLD}$(t vault_search_lbl)${RST}${BG_CARD} ${FG_TEXT}${search_query}${BG_PILL_CYAN}${FG_DARK}${BOLD} ${RST}${BG_CARD}   ${FG_MUTED}$(t vault_search_tip)${RST}${BG_CARD}"
             elif [[ -n "${search_query}" ]]; then
-                search_line="${FG_AMBER}${BOLD}⌕ FILTER:${RST}${BG_CARD} ${FG_TEXT}\"${search_query}\"${RST}${BG_CARD} ${FG_MUTED}(${total}/${all_total} cocok)   ${FG_SKY}[/] Ubah   [X/Esc] Reset${RST}${BG_CARD}"
+                search_line="${FG_AMBER}${BOLD}$(t vault_filter_lbl)${RST}${BG_CARD} ${FG_TEXT}\"${search_query}\"${RST}${BG_CARD} ${FG_MUTED}(${total}/${all_total} $(t vault_matched))   ${FG_SKY}$(t vault_edit_btn)${RST}${BG_CARD}"
             else
-                search_line="${FG_MUTED}⌕ Tekan ${FG_SKY}[/]${FG_MUTED} atau ${FG_SKY}[S]${FG_MUTED} untuk mencari model terinstall...${RST}${BG_CARD}"
+                search_line="${FG_MUTED}$(t vault_idle_1) ${FG_SKY}[/]${FG_MUTED} $(t vault_idle_2) ${FG_SKY}[S]${FG_MUTED} $(t vault_idle_3)${RST}${BG_CARD}"
             fi
             buf_box_line "${search_line}" "${FG_CYAN}"
             buf_box_sep "${FG_DIM}"
 
             if [[ ${total} -eq 0 ]]; then
-                buf_box_line "${FG_AMBER}  Tidak ada model yang cocok dengan \"${search_query}\". Tekan [Esc] atau [X] untuk reset.${RST}${BG_CARD}" "${FG_CYAN}"
+                buf_box_line "${FG_AMBER}$(t vault_no_match_1) \"${search_query}\". $(t vault_no_match_2)${RST}${BG_CARD}" "${FG_CYAN}"
             else
                 for ((i = offset; i < end_idx; i++)); do
                     local entry="${filtered_models[$i]}"
@@ -1624,13 +1961,11 @@ menu_manage_installed() {
                     local mmod="${rest#*|}"
                     local page_slot=$((i - offset + 1))
 
-                    # Kolom nama model (rata kiri, lebar tetap)
                     truncate_plain_var "${mname}" $((name_col_w - 1))
                     local disp_name="${RET_STR}"
                     repeat_char_var " " $((name_col_w - ${#disp_name}))
                     local name_pad="${RET_STR}"
 
-                    # Kolom ukuran file (rata kiri, lebar tetap)
                     local size_tag="[${msize}]"
                     truncate_plain_var "${size_tag}" "${size_col_w}"
                     local disp_size="${RET_STR}"
@@ -1649,7 +1984,7 @@ menu_manage_installed() {
                     fi
 
                     local left_part="${prefix}${num_col}[${page_slot}] ${name_col}${disp_name}${name_pad}${RST}${row_bg}  ${FG_SKY}${disp_size}${size_pad}${RST}${row_bg}"
-                    local right_part="${FG_DIM}Updated: ${FG_MUTED}${mmod}${RST}${row_bg}"
+                    local right_part="${FG_DIM}$(t vault_updated)${FG_MUTED}${mmod}${RST}${row_bg}"
 
                     strip_ansi_len "${left_part}"
                     local l_len=${RET_LEN}
@@ -1666,19 +2001,18 @@ menu_manage_installed() {
             buf_box_bottom "${FG_CYAN}"
 
             if [[ ${search_mode} -eq 1 ]]; then
-                buf_footer_hints "[A-Z/0-9] Filter Live   [↑/↓] Pilih   [Backspace] Hapus   [Enter] Selesai   [Esc] Reset"
+                buf_footer_hints "$(t vault_hint_search)"
             else
                 local quick_hint=""
-                [[ ${visible_count} -gt 1 ]] && quick_hint="[1-${visible_count}] Pilih   "
-                [[ ${visible_count} -eq 1 ]] && quick_hint="[1] Pilih   "
-                buf_footer_hints "[↑/↓] Nav   [←/→] Page   [/] Cari   [Enter] Actions   [C] Chat   ${quick_hint}[Esc/Q] Back"
+                [[ ${visible_count} -gt 1 ]] && quick_hint="$(t store_sel_many_pre)${visible_count}$(t store_sel_many_post)"
+                [[ ${visible_count} -eq 1 ]] && quick_hint="$(t store_sel_one)"
+                buf_footer_hints "$(t vault_hint_nav_1)   ${quick_hint}$(t vault_hint_nav_2)"
             fi
             flush_frame
 
             local k
             k="$(read_key)"
 
-            # Mode ketik pencarian langsung (live filter tanpa keluar TUI)
             if [[ ${search_mode} -eq 1 ]]; then
                 case "${k}" in
                     ESC)
@@ -1714,7 +2048,6 @@ menu_manage_installed() {
                 continue
             fi
 
-            # Mode navigasi normal
             case "${k}" in
                 UP|k|K)
                     [[ ${total} -gt 0 ]] && cursor=$(( (cursor - 1 + total) % total ))
@@ -1790,16 +2123,16 @@ submenu_model_actions() {
     local actions=("chat" "inspect" "copy" "delete")
 
     local labels=(
-        "Launch Neural Streaming Chat (Interactive Terminal)"
-        "Inspect Architecture & Parameters (ollama show)"
-        "Copy Model Tag to Clipboard"
-        "Purge / Delete Model from Disk"
+        "$(t act_1)"
+        "$(t act_2)"
+        "$(t act_3)"
+        "$(t act_4)"
     )
 
     while true; do
-        begin_neural_frame "MODEL CONTROL // ${selected_model}"
+        begin_neural_frame "$(t act_sub) ${selected_model}"
         buf_box_top "${FG_VIOLET}"
-        buf_box_line "${FG_VIOLET}${BOLD}◈ TARGET WEIGHTS: ${FG_CYAN}${selected_model}${RST}${BG_CARD}" "${FG_VIOLET}"
+        buf_box_line "${FG_VIOLET}${BOLD}$(t act_hdr) ${FG_CYAN}${selected_model}${RST}${BG_CARD}" "${FG_VIOLET}"
         buf_box_sep "${FG_DIM}"
 
         for ((i = 0; i < 4; i++)); do
@@ -1816,7 +2149,7 @@ submenu_model_actions() {
         done
 
         buf_box_bottom "${FG_VIOLET}"
-        buf_footer_hints "[↑/↓] Navigate   [Enter] Execute   [1-4] Hotkey   [Esc/Q] Back"
+        buf_footer_hints "$(t act_hint)"
         flush_frame
 
         local k
@@ -1839,9 +2172,9 @@ submenu_model_actions() {
                     ;;
                 copy)
                     if copy_to_clipboard "${selected_model}"; then
-                        show_notice "CLIPBOARD COPIED" "Tag '${selected_model}' berhasil disalin ke clipboard!" "${FG_GREEN}"
+                        show_notice "$(t act_copy_title)" "$(t act_copy_ok_1) '${selected_model}' $(t act_copy_ok_2)" "${FG_GREEN}"
                     else
-                        show_notice "MODEL TAG" "Tag: ${selected_model}\n(Install xclip atau wl-copy untuk auto-clipboard)" "${FG_SKY}"
+                        show_notice "$(t act_copy_fb_title)" "Tag: ${selected_model}\n$(t act_copy_fb_note)" "${FG_SKY}"
                     fi
                     ;;
                 delete)
@@ -1854,7 +2187,7 @@ submenu_model_actions() {
 }
 
 # ==============================================================================
-# 9. INTEGRATIONS & API GATEWAY (9ROUTER, OPEN WEBUI, CONTINUE.DEV)
+# 10. INTEGRATIONS & API GATEWAY (9ROUTER, OPEN WEBUI, CONTINUE.DEV)
 # ==============================================================================
 build_continue_yaml() {
     local sample_model="qwen2.5-coder:3b"
@@ -1887,16 +2220,16 @@ menu_integrations_api() {
     detect_ollama_state
     local cursor=0
     local items=(
-        "Endpoint Guide: 9Router, Open WebUI (Docker) & Aider CLI"
-        "Live API Handshake Test (http://127.0.0.1:11434/api/tags)"
-        "Preview Continue.dev Config (~/.continue/config.yaml)"
-        "Copy Continue.dev YAML to Clipboard"
+        "$(t api_1)"
+        "$(t api_2)"
+        "$(t api_3)"
+        "$(t api_4)"
     )
 
     while true; do
-        begin_neural_frame "AI AGENT GATEWAY • 9ROUTER • OPEN WEBUI • CONTINUE.DEV"
+        begin_neural_frame "$(t api_sub)"
         buf_box_top "${FG_SKY}"
-        buf_box_line "${FG_SKY}${BOLD}◈ LOCAL ENDPOINT & AGENT INTEGRATION HUB${RST}${BG_CARD}" "${FG_SKY}"
+        buf_box_line "${FG_SKY}${BOLD}$(t api_hdr)${RST}${BG_CARD}" "${FG_SKY}"
         buf_box_sep "${FG_DIM}"
 
         for ((i = 0; i < 4; i++)); do
@@ -1912,7 +2245,7 @@ menu_integrations_api() {
         done
 
         buf_box_bottom "${FG_SKY}"
-        buf_footer_hints "[↑/↓] Navigate   [Enter] Select   [1-4] Hotkey   [Esc/Q] Back"
+        buf_footer_hints "$(t api_hint)"
         flush_frame
 
         local k
@@ -1928,31 +2261,52 @@ menu_integrations_api() {
             case ${cursor} in
                 0)
                     local guide_txt
-                    guide_txt=$(cat << 'EOF'
-1. UNIVERSAL OLLAMA ENDPOINTS
-   • Native Ollama API : http://127.0.0.1:11434
-   • OpenAI Compatible : http://127.0.0.1:11434/v1
-   • API Key           : ollama (dummy key)
+                    if [[ "${CURRENT_LANG}" == "id" ]]; then
+                        guide_txt=$(cat << 'EOF'
+1. ENDPOINT UNIVERSAL OLLAMA
+  - Native Ollama API : http://127.0.0.1:11434
+  - OpenAI Compatible : http://127.0.0.1:11434/v1
+  - API Key           : ollama (dummy key)
 
-2. 9ROUTER PROXY INTEGRATION
-   • Provider Type     : OpenAI Compatible
-   • Base URL          : http://127.0.0.1:11434/v1
-   • Model ID          : Sesuai tag terinstall (misal: qwen2.5-coder:3b)
+2. INTEGRASI PROXY 9ROUTER
+  - Tipe Provider     : OpenAI Compatible
+  - Base URL          : http://127.0.0.1:11434/v1
+  - Model ID          : Sesuai tag terinstall (misal: qwen2.5-coder:3b)
 
-3. OPEN WEBUI (DOCKER CONTAINER)
-   • Systemd Env       : Environment="OLLAMA_HOST=0.0.0.0:11434"
-   • Docker Run Flag   : --add-host=host.docker.internal:host-gateway
-   • Container Env     : OLLAMA_BASE_URL=http://host.docker.internal:11434
-   • UFW Firewall      : sudo ufw allow from 172.16.0.0/12 to any port 11434
+3. OPEN WEBUI (CONTAINER DOCKER)
+  - Systemd Env       : Environment="OLLAMA_HOST=0.0.0.0:11434"
+  - Docker Run Flag   : --add-host=host.docker.internal:host-gateway
+  - Container Env     : OLLAMA_BASE_URL=http://host.docker.internal:11434
+  - UFW Firewall      : sudo ufw allow from 172.16.0.0/12 to any port 11434
 EOF
 )
-                    show_notice "AI ECOSYSTEM INTEGRATION GUIDE" "${guide_txt}" "${FG_SKY}"
+                    else
+                        guide_txt=$(cat << 'EOF'
+1. UNIVERSAL OLLAMA ENDPOINTS
+  - Native Ollama API : http://127.0.0.1:11434
+  - OpenAI Compatible : http://127.0.0.1:11434/v1
+  - API Key           : ollama (dummy key)
+
+2. 9ROUTER PROXY INTEGRATION
+  - Provider Type     : OpenAI Compatible
+  - Base URL          : http://127.0.0.1:11434/v1
+  - Model ID          : Installed model tag (e.g., qwen2.5-coder:3b)
+
+3. OPEN WEBUI (DOCKER CONTAINER)
+  - Systemd Env       : Environment="OLLAMA_HOST=0.0.0.0:11434"
+  - Docker Run Flag   : --add-host=host.docker.internal:host-gateway
+  - Container Env     : OLLAMA_BASE_URL=http://host.docker.internal:11434
+  - UFW Firewall      : sudo ufw allow from 172.16.0.0/12 to any port 11434
+EOF
+)
+                    fi
+                    show_notice "$(t api_guide_title)" "${guide_txt}" "${FG_SKY}"
                     ;;
                 1)
                     if curl -sf --max-time 3 "${OLLAMA_BASE_URL}/api/tags" >/dev/null 2>&1; then
-                        show_notice "HANDSHAKE SUCCESS" "✓ HTTP 200 OK — Neural API aktif di http://127.0.0.1:11434" "${FG_GREEN}"
+                        show_notice "$(t api_hs_ok_title)" "$(t api_hs_ok_body)" "${FG_GREEN}"
                     else
-                        show_notice "HANDSHAKE FAILED" "✕ Gagal terhubung ke http://127.0.0.1:11434.\nPastikan Ollama service sedang berjalan." "${FG_RED}"
+                        show_notice "$(t api_hs_err_title)" "$(t api_hs_err_body)" "${FG_RED}"
                     fi
                     ;;
                 2)
@@ -1960,9 +2314,9 @@ EOF
                     ;;
                 3)
                     if copy_to_clipboard "$(build_continue_yaml)"; then
-                        show_notice "CLIPBOARD COPIED" "✓ Konfigurasi Continue.dev YAML berhasil disalin ke clipboard!" "${FG_GREEN}"
+                        show_notice "$(t act_copy_title)" "$(t api_yaml_ok)" "${FG_GREEN}"
                     else
-                        show_notice "CLIPBOARD UNAVAILABLE" "Install 'xclip' atau 'wl-copy' untuk menyalin otomatis." "${FG_AMBER}"
+                        show_notice "$(t api_yaml_err_title)" "$(t api_yaml_err_body)" "${FG_AMBER}"
                     fi
                     ;;
             esac
@@ -1971,7 +2325,7 @@ EOF
 }
 
 # ==============================================================================
-# 10. LANGUAGE PREFERENCES (ID / EN)
+# 11. LANGUAGE PREFERENCES (ID / EN)
 # ==============================================================================
 menu_preferences() {
     local lang
@@ -1980,10 +2334,10 @@ menu_preferences() {
     [[ "${lang}" == "en" ]] && cursor=1
 
     while true; do
-        begin_neural_frame "SYSTEM PREFERENCES // INTERFACE LOCALE"
+        begin_neural_frame "$(t pref_sub)"
         buf_box_top "${FG_VIOLET}"
-        buf_box_line "${FG_VIOLET}${BOLD}◈ SELECT INTERFACE LANGUAGE${RST}${BG_CARD}" "${FG_VIOLET}"
-        buf_box_line "${FG_MUTED}  Config: ${CONFIG_PATH}${RST}${BG_CARD}" "${FG_VIOLET}"
+        buf_box_line "${FG_VIOLET}${BOLD}$(t pref_hdr)${RST}${BG_CARD}" "${FG_VIOLET}"
+        buf_box_line "${FG_MUTED}$(t pref_cfg) ${CONFIG_PATH}${RST}${BG_CARD}" "${FG_VIOLET}"
         buf_box_sep "${FG_DIM}"
 
         local opts=("Bahasa Indonesia (ID)" "English (EN)")
@@ -2000,33 +2354,36 @@ menu_preferences() {
                 prefix="${FG_CYAN}${BOLD}▸ "
                 col="${FG_CYAN}${BOLD}"
             fi
-            buf_box_line "${prefix}${radio}${RST}${row_bg}  ${col}${opts[$i]}${RST}${row_bg}" "${FG_VIOLET}" "${row_bg}"
+            buf_box_line "${prefix}[$((i + 1))] ${radio}${RST}${row_bg}  ${col}${opts[$i]}${RST}${row_bg}" "${FG_VIOLET}" "${row_bg}"
         done
 
         buf_box_bottom "${FG_VIOLET}"
-        buf_footer_hints "[↑/↓] Toggle   [Enter] Save Locale   [Esc/Q] Back"
+        buf_footer_hints "$(t pref_hint)"
         flush_frame
 
         local k
         k="$(read_key)"
         case "${k}" in
             UP|DOWN|j|k|J|K) cursor=$((1 - cursor)) ;;
-            ENTER)
-                set_lang "${codes[$cursor]}"
-                if [[ "${codes[$cursor]}" == "id" ]]; then
-                    show_notice "LOCALE UPDATED" "✓ Bahasa antarmuka diubah ke Bahasa Indonesia (ID)." "${FG_GREEN}"
-                else
-                    show_notice "LOCALE UPDATED" "✓ Interface language switched to English (EN)." "${FG_GREEN}"
-                fi
-                return
-                ;;
+            1) cursor=0; k="ENTER" ;;
+            2) cursor=1; k="ENTER" ;;
             ESC|q|Q|BACK) return ;;
         esac
+
+        if [[ "${k}" == "ENTER" ]]; then
+            set_lang "${codes[$cursor]}"
+            if [[ "${codes[$cursor]}" == "id" ]]; then
+                show_notice "$(t pref_saved_title)" "$(t pref_saved_id)" "${FG_GREEN}"
+            else
+                show_notice "$(t pref_saved_title)" "$(t pref_saved_en)" "${FG_GREEN}"
+            fi
+            return
+        fi
     done
 }
 
 # ==============================================================================
-# 11. MAIN NEURAL COMMAND CENTER LOOP (ZERO-FLICKER NAVIGATION)
+# 12. MAIN NEURAL COMMAND CENTER LOOP (ZERO-FLICKER NAVIGATION)
 # ==============================================================================
 main_loop() {
     init_files
@@ -2039,7 +2396,6 @@ main_loop() {
     local top_rec_size=""
 
     while true; do
-        # Only poll hardware & Ollama API when needed (startup, post-action, or [R])
         if [[ ${need_sync} -eq 1 ]]; then
             lang="$(get_lang)"
             detect_hardware
@@ -2055,7 +2411,7 @@ main_loop() {
             need_sync=0
         fi
 
-        begin_neural_frame "${APP_SUB}"
+        begin_neural_frame "$(t app_sub)"
 
         local keys=()
         local labels=()
@@ -2063,47 +2419,25 @@ main_loop() {
 
         if [[ ${OLLAMA_INSTALLED} -eq 0 ]]; then
             keys+=("install_ollama")
-            if [[ "${lang}" == "id" ]]; then
-                labels+=("INSTALL OLLAMA RUNTIME SEKARANG (Wajib)")
-            else
-                labels+=("INSTALL OLLAMA RUNTIME NOW (Required)")
-            fi
+            labels+=("$(t main_install)")
             badges+=("${FG_RED}[SETUP]${RST}")
         elif [[ ${#INSTALLED_MODELS[@]} -eq 0 && -n "${top_rec_name}" ]]; then
             keys+=("quick_rec")
-            if [[ "${lang}" == "id" ]]; then
-                labels+=("Quick-Install Rekomendasi Terbaik: ${top_rec_name}")
-            else
-                labels+=("Quick-Install Top Match: ${top_rec_name}")
-            fi
+            labels+=("$(t main_quick) ${top_rec_name}")
             badges+=("${FG_GREEN}[★ ${top_rec_size}]${RST}")
         fi
 
-        if [[ "${lang}" == "id" ]]; then
-            keys+=("models" "store" "custom" "service" "api" "prefs" "refresh" "quit")
-            labels+=(
-                "Neural Models Vault — Chat, Inspect, Copy & Delete"
-                "Neural Model Store — Rekomendasi Cerdas Hardware"
-                "Custom Registry Pull — Unduh Tag dari Ollama Library"
-                "Engine Power Control — Start / Stop Ollama Daemon"
-                "Agent & API Gateway — 9Router, Open WebUI & Continue.dev"
-                "System Preferences — Bahasa Antarmuka (ID / EN)"
-                "Sync Telemetry — Refresh Status Hardware & Service"
-                "Exit Command Center"
-            )
-        else
-            keys+=("models" "store" "custom" "service" "api" "prefs" "refresh" "quit")
-            labels+=(
-                "Neural Models Vault — Chat, Inspect, Copy & Delete"
-                "Neural Model Store — Hardware-Matched Recommendations"
-                "Custom Registry Pull — Download Tag from Ollama Library"
-                "Engine Power Control — Start / Stop Ollama Daemon"
-                "Agent & API Gateway — 9Router, Open WebUI & Continue.dev"
-                "System Preferences — Interface Language (ID / EN)"
-                "Sync Telemetry — Refresh Hardware & Service Status"
-                "Exit Command Center"
-            )
-        fi
+        keys+=("models" "store" "custom" "service" "api" "prefs" "refresh" "quit")
+        labels+=(
+            "$(t main_m1)"
+            "$(t main_m2)"
+            "$(t main_m3)"
+            "$(t main_m4)"
+            "$(t main_m5)"
+            "$(t main_m6)"
+            "$(t main_m7)"
+            "$(t main_m8)"
+        )
 
         local svc_tag="${FG_AMBER}[STANDBY]${RST}"
         [[ ${OLLAMA_RUNNING} -eq 1 ]] && svc_tag="${FG_GREEN}[ACTIVE]${RST}"
@@ -2123,7 +2457,7 @@ main_loop() {
         [[ ${cursor} -ge ${total} ]] && cursor=$((total - 1))
 
         buf_box_top "${FG_VIOLET}"
-        buf_box_line "${FG_VIOLET}${BOLD}◈ NEURAL COMMAND MATRIX${RST}${BG_CARD}" "${FG_VIOLET}"
+        buf_box_line "${FG_VIOLET}${BOLD}$(t main_matrix)${RST}${BG_CARD}" "${FG_VIOLET}"
         buf_box_sep "${FG_DIM}"
 
         for ((i = 0; i < total; i++)); do
@@ -2153,7 +2487,7 @@ main_loop() {
         done
 
         buf_box_bottom "${FG_VIOLET}"
-        buf_footer_hints "[↑/↓] Navigate   [Enter] Execute   [1-${total}] Quick Jump   [R] Sync Telemetry   [Q] Quit"
+        buf_footer_hints "$(t main_hint_1)${total}$(t main_hint_2)"
         flush_frame
 
         local k
