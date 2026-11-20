@@ -1093,10 +1093,14 @@ class UniversalOllamaManager:
         frame.pack(fill=tk.BOTH, expand=True)
 
         self.hints_title_lbl = tk.Label(frame, text=t["hints_title"], font=("Segoe UI", 12, "bold"), fg="#ffffff", bg="#1e1e2f")
-        self.hints_title_lbl.pack(anchor=tk.W, pady=5)
+        self.hints_title_lbl.pack(anchor=tk.W, pady=(0, 12))
 
-        self.hints_txt = scrolledtext.ScrolledText(frame, bg="#11111b", fg="#f9e2af", font=("JetBrains Mono", 10), height=18, relief=tk.FLAT, bd=0)
-        self.hints_txt.pack(fill=tk.BOTH, expand=True, pady=5)
+        # Card container for About Ollama tab to match API & Integration style
+        hints_card = tk.LabelFrame(frame, text=" Informasi & Dokumentasi Resmi Ollama ", fg="#f9e2af", bg="#1e1e2f", font=("Segoe UI", 10, "bold"), padx=15, pady=15)
+        hints_card.pack(fill=tk.BOTH, expand=True)
+
+        self.hints_txt = scrolledtext.ScrolledText(hints_card, bg="#11111b", fg="#f9e2af", font=("JetBrains Mono", 10), height=18, relief=tk.FLAT, bd=0)
+        self.hints_txt.pack(fill=tk.BOTH, expand=True, pady=(0, 12))
         
         full_text = t["hints_header_desc"]
         self.hints_txt.insert(tk.END, full_text)
