@@ -1,4 +1,5 @@
 {
   "lang": "en",
-  "terminal": "gnome-terminal"
+  "terminal": "gnome-terminal",
+  "num_ctx": 8192
 }

@@ -1251,10 +1251,22 @@ open_local_chat() {
 
     leave_tui
 
+    # Resolusi path config.json yang aman terhadap set -u
+    local _chat_cfg_file="${CONFIG_FILE:-${CFG_FILE:-$(dirname "$(readlink -f "$0")")/config.json}}"
+    local cfg_num_ctx=""
+    if [[ "${HAS_JQ}" -eq 1 && -f "${_chat_cfg_file}" ]]; then
+        local _raw_ctx
+        _raw_ctx="$(jq -r '.num_ctx // empty' "${_chat_cfg_file}" 2>/dev/null || true)"
+        if [[ "${_raw_ctx}" =~ ^[0-9]+$ && "${_raw_ctx}" -gt 0 ]]; then
+            cfg_num_ctx="${_raw_ctx}"
+        fi
+    fi
+    local active_ctx="${cfg_num_ctx:-default}"
+
     draw_chat_header() {
         printf "%s\033[H\033[2J\033[3J" "${BG_MAIN}"
         echo -e "${FG_CYAN}${BOLD}╭──────────────────────────────────────────────────────────────────────────────────────╮${RST}"
-        echo -e "${FG_CYAN}${BOLD}│ ◈ NEURAL STREAMING SESSION  ${FG_DIM}•  ${FG_VIOLET}MODEL: ${FG_TEXT}${model_name}${RST}"
+        echo -e "${FG_CYAN}${BOLD}│ ◈ NEURAL STREAMING SESSION  ${FG_DIM}•  ${FG_VIOLET}MODEL: ${FG_TEXT}${model_name}  ${FG_DIM}•  ${FG_AMBER}CTX: ${FG_TEXT}${active_ctx}${RST}"
         echo -e "${FG_CYAN}${BOLD}│ ${FG_MUTED}$(t chat_cmds)${RST}"
         echo -e "${FG_CYAN}${BOLD}╰──────────────────────────────────────────────────────────────────────────────────────╯${RST}\n"
     }
@@ -1281,10 +1293,8 @@ open_local_chat() {
         local point="${READLINE_POINT}"
         local prefix="${line:0:${point}}"
 
-        # Hanya aktif jika input diawali '/'
         [[ "${prefix}" != /* ]] && return
 
-        # Kumpulkan semua kandidat command yang tersedia saat ini
         local candidates=("/copy" "/last" "/clear" "/exit" "/quit")
         if [[ ${total_code_count} -gt 0 ]]; then
             candidates+=("/copy last" "/copy all")
@@ -1293,7 +1303,6 @@ open_local_chat() {
             done
         fi
 
-        # Filter kandidat yang cocok dengan ketikan saat ini
         local matches=()
         for cmd in "${candidates[@]}"; do
             if [[ "${cmd}" == "${prefix}"* ]]; then
@@ -1302,11 +1311,9 @@ open_local_chat() {
         done
 
         if [[ ${#matches[@]} -eq 1 ]]; then
-            # Langsung lengkapi jika hanya 1 kecocokan
             READLINE_LINE="${matches[0]}"
             READLINE_POINT=${#READLINE_LINE}
         elif [[ ${#matches[@]} -gt 1 ]]; then
-            # Cari common prefix terpanjang
             local common="${matches[0]}"
             for m in "${matches[@]:1}"; do
                 while [[ "${m}" != "${common}"* && -n "${common}" ]]; do
@@ -1318,7 +1325,6 @@ open_local_chat() {
                 READLINE_LINE="${common}"
                 READLINE_POINT=${#READLINE_LINE}
             else
-                # Tampilkan daftar opsi di bawah prompt lalu gambar ulang prompt
                 printf "\n%s  %s%s\n" "${FG_MUTED}" "${matches[*]}" "${RST}"
                 printf "%s%s╭─ YOU %s[%d]%s\n%s╰─▸ %s%s" \
                     "${FG_VIOLET}" "${BOLD}" "${FG_MUTED}" "$((turn_count + 1))" "${RST}" \
@@ -1327,7 +1333,6 @@ open_local_chat() {
         fi
     }
 
-    # Bind tombol Tab ke fungsi autocomplete selama sesi chat
     bind -x '"\t": _chat_slash_complete' 2>/dev/null || true
 
     render_chat_line() {
@@ -1382,15 +1387,15 @@ open_local_chat() {
     }
 
     while true; do
+        stty sane 2>/dev/null || true
+
         printf "%s%s╭─ YOU %s[%d]%s\n" "${FG_VIOLET}" "${BOLD}" "${FG_MUTED}" "$((turn_count + 1))" "${RST}"
         local prompt_line
         prompt_line="$(printf "%s╰─▸ %s" "${FG_VIOLET}" "${RST}")"
 
         local user_input=""
-        # -e mengaktifkan Readline (panah kiri/kanan, history, dan Tab autocomplete)
         IFS= read -e -r -p "${prompt_line}" user_input || break
 
-        # Simpan ke readline history sesi agar panah atas/bawah berfungsi
         [[ -n "${user_input}" ]] && history -s "${user_input}"
 
         [[ -z "${user_input}" ]] && continue
@@ -1485,66 +1490,119 @@ open_local_chat() {
         [[ ${wrap_w} -lt 40 ]] && wrap_w=40
 
         turn_count=$((turn_count + 1))
+
+        # Baca ulang num_ctx dari config.json setiap turn (jika user edit config saat chat berjalan)
+        cfg_num_ctx=""
+        if [[ "${HAS_JQ}" -eq 1 && -f "${_chat_cfg_file}" ]]; then
+            local _raw_ctx
+            _raw_ctx="$(jq -r '.num_ctx // empty' "${_chat_cfg_file}" 2>/dev/null || true)"
+            if [[ "${_raw_ctx}" =~ ^[0-9]+$ && "${_raw_ctx}" -gt 0 ]]; then
+                cfg_num_ctx="${_raw_ctx}"
+            fi
+        fi
+
         local payload
         if [[ "${HAS_JQ}" -eq 1 ]]; then
             history_json="$(echo "${history_json}" | jq -c --arg content "${user_input}" '. + [{"role":"user","content":$content}]')"
-            payload="$(jq -nc --arg model "${model_name}" --argjson msgs "${history_json}" '{"model":$model,"messages":$msgs,"stream":true}')"
+            if [[ -n "${cfg_num_ctx}" ]]; then
+                payload="$(jq -nc --arg model "${model_name}" --argjson msgs "${history_json}" --argjson ctx "${cfg_num_ctx}" \
+                    '{"model":$model,"messages":$msgs,"stream":true,"options":{"repeat_penalty":1.15,"num_ctx":$ctx}}')"
+            else
+                payload="$(jq -nc --arg model "${model_name}" --argjson msgs "${history_json}" \
+                    '{"model":$model,"messages":$msgs,"stream":true,"options":{"repeat_penalty":1.15}}')"
+            fi
         else
             local escaped_input
             escaped_input="$(printf '%s' "${user_input}" | sed 's/\\/\\\\/g; s/"/\\"/g')"
-            payload="{\"model\":\"${model_name}\",\"messages\":[{\"role\":\"user\",\"content\":\"${escaped_input}\"}],\"stream\":true}"
+            if [[ -n "${cfg_num_ctx}" ]]; then
+                payload="{\"model\":\"${model_name}\",\"messages\":[{\"role\":\"user\",\"content\":\"${escaped_input}\"}],\"stream\":true,\"options\":{\"repeat_penalty\":1.15,\"num_ctx\":${cfg_num_ctx}}}"
+            else
+                payload="{\"model\":\"${model_name}\",\"messages\":[{\"role\":\"user\",\"content\":\"${escaped_input}\"}],\"stream\":true,\"options\":{\"repeat_penalty\":1.15}}"
+            fi
         fi
 
         echo ""
-        printf "%s%s╭─ AI // %s%s\n" "${FG_CYAN}" "${BOLD}" "${model_name}" "${RST}"
+        printf "%s%s╭─ AI // %s  %s[Ctrl+C: Cancel]%s\n" "${FG_CYAN}" "${BOLD}" "${model_name}" "${FG_DIM}" "${RST}"
 
         mkdir -p "${TMP_DIR}"
         local reply_file="${TMP_DIR}/last_reply.txt"
         local stats_file="${TMP_DIR}/last_stats.txt"
+        local meta_file="${TMP_DIR}/stream_meta.txt"
         : > "${reply_file}"
         : > "${stats_file}"
+        : > "${meta_file}"
 
-        in_code=0
-        code_idx=${total_code_count}
-        local turn_code_added=0
-        local line_buf=""
+        local had_errexit=0
+        [[ $- == *e* ]] && had_errexit=1
+        set +e
 
-        while IFS= read -r line; do
-            [[ -z "${line}" ]] && continue
-            local token=""
-            if [[ "${HAS_JQ}" -eq 1 ]]; then
-                token="$(printf '%s' "${line}" | jq -j '(.message.content // "") + "x"' 2>/dev/null)"
-                token="${token%x}"
-                if printf '%s' "${line}" | grep -q '"done":true'; then
-                    printf '%s' "${line}" | jq -r '"Tokens: " + ((.eval_count // 0) | tostring) + " | Speed: " + ((((.eval_count // 0) / (((.eval_duration // 1) | if . <= 0 then 1 else . end) / 1000000000)) * 10 | round / 10) | tostring) + " tok/s | Latency: " + ((((.total_duration // 0) / 1000000000) * 100 | round / 100) | tostring) + "s"' 2>/dev/null > "${stats_file}" || true
+        trap '' INT
+
+        (
+            trap '
+                if [[ -n "${line_buf}" ]]; then
+                    render_chat_line "${line_buf}"
                 fi
-            else
-                token="$(printf '%s' "${line}" | sed -n 's/.*"content":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g; s/\\"/"/g')"
-            fi
+                if [[ ${in_code} -eq 1 ]]; then
+                    in_code=0
+                    printf "%s│ %s%s %d %s ──────────────────────%s\n" \
+                        "${FG_CYAN}" "${FG_MUTED}" "$(t chat_code_hint_pre)" "${code_idx}" "$(t chat_code_hint_post)" "${RST}"
+                fi
+                printf "%s\n%s\n" "${code_idx}" "${last_code_langs[*]:-}" > "${meta_file}"
+                exit 130
+            ' INT
 
-            if [[ -n "${token}" ]]; then
-                printf "%s" "${token}" >> "${reply_file}"
-                line_buf+="${token}"
-                while [[ "${line_buf}" == *$'\n'* ]]; do
-                    local one_line="${line_buf%%$'\n'*}"
-                    line_buf="${line_buf#*$'\n'}"
-                    render_chat_line "${one_line}"
-                done
-            fi
-        done < <(curl -sN -X POST "${OLLAMA_BASE_URL}/api/chat" -H "Content-Type: application/json" -d "${payload}")
-
-        if [[ -n "${line_buf}" ]]; then
-            render_chat_line "${line_buf}"
-            line_buf=""
-        fi
-        if [[ ${in_code} -eq 1 ]]; then
             in_code=0
-            printf "%s│ %s%s %d %s ──────────────────────%s\n" \
-                "${FG_CYAN}" "${FG_MUTED}" "$(t chat_code_hint_pre)" "${code_idx}" "$(t chat_code_hint_post)" "${RST}"
-        fi
+            code_idx=${total_code_count}
+            line_buf=""
 
-        turn_code_added=$((code_idx - total_code_count))
-        total_code_count=${code_idx}
+            while IFS= read -r line; do
+                [[ -z "${line}" ]] && continue
+                local token=""
+                if [[ "${HAS_JQ}" -eq 1 ]]; then
+                    token="$(printf '%s' "${line}" | jq -j '(.message.content // "") + "x"' 2>/dev/null)"
+                    token="${token%x}"
+                    if printf '%s' "${line}" | grep -q '"done":true'; then
+                        printf '%s' "${line}" | jq -r '"Tokens: " + ((.eval_count // 0) | tostring) + " | Speed: " + ((((.eval_count // 0) / (((.eval_duration // 1) | if . <= 0 then 1 else . end) / 1000000000)) * 10 | round / 10) | tostring) + " tok/s | Latency: " + ((((.total_duration // 0) / 1000000000) * 100 | round / 100) | tostring) + "s"' 2>/dev/null > "${stats_file}" || true
+                    fi
+                else
+                    token="$(printf '%s' "${line}" | sed -n 's/.*"content":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g; s/\\"/"/g')"
+                fi
+
+                if [[ -n "${token}" ]]; then
+                    printf "%s" "${token}" >> "${reply_file}"
+                    line_buf+="${token}"
+                    while [[ "${line_buf}" == *$'\n'* ]]; do
+                        local one_line="${line_buf%%$'\n'*}"
+                        line_buf="${line_buf#*$'\n'}"
+                        render_chat_line "${one_line}"
+                    done
+                fi
+            done < <(curl -sN -X POST "${OLLAMA_BASE_URL}/api/chat" -H "Content-Type: application/json" -d "${payload}")
+
+            if [[ -n "${line_buf}" ]]; then
+                render_chat_line "${line_buf}"
+            fi
+            if [[ ${in_code} -eq 1 ]]; then
+                in_code=0
+                printf "%s│ %s%s %d %s ──────────────────────%s\n" \
+                    "${FG_CYAN}" "${FG_MUTED}" "$(t chat_code_hint_pre)" "${code_idx}" "$(t chat_code_hint_post)" "${RST}"
+            fi
+            printf "%s\n%s\n" "${code_idx}" "${last_code_langs[*]:-}" > "${meta_file}"
+            exit 0
+        )
+        local stream_rc=$?
+
+        trap - INT
+        [[ ${had_errexit} -eq 1 ]] && set -e
+
+        local new_code_idx=${total_code_count}
+        if [[ -s "${meta_file}" ]]; then
+            new_code_idx="$(sed -n '1p' "${meta_file}")"
+            [[ ! "${new_code_idx}" =~ ^[0-9]+$ ]] && new_code_idx=${total_code_count}
+        fi
+        local turn_code_added=$((new_code_idx - total_code_count))
+        total_code_count=${new_code_idx}
 
         local code_hint=""
         if [[ ${turn_code_added} -gt 0 ]]; then
@@ -1553,20 +1611,26 @@ open_local_chat() {
             code_hint="  ${FG_DIM}│  ${FG_MUTED}saved #1..#${total_code_count}"
         fi
 
-        if [[ -s "${stats_file}" ]]; then
+        if [[ ${stream_rc} -eq 130 ]]; then
+            printf "\r%s╰─ ✖ %sResponse cancelled by user%s%s\n\n" "${FG_CYAN}" "${FG_AMBER}" "${code_hint}" "${RST}"
+        elif [[ -s "${stats_file}" ]]; then
             printf "%s╰─ ✦ %s%s%s%s\n\n" "${FG_CYAN}" "${FG_GREEN}" "$(cat "${stats_file}")" "${code_hint}" "${RST}"
         else
             printf "%s╰─ ✦ %s%s%s\n\n" "${FG_CYAN}" "$(t chat_stream_done)" "${code_hint}" "${RST}"
         fi
 
-        if [[ "${HAS_JQ}" -eq 1 && -s "${reply_file}" ]]; then
-            local full_reply
-            full_reply="$(cat "${reply_file}")"
-            history_json="$(echo "${history_json}" | jq -c --arg content "${full_reply}" '. + [{"role":"assistant","content":$content}]')"
+        if [[ "${HAS_JQ}" -eq 1 ]]; then
+            if [[ -s "${reply_file}" ]]; then
+                local full_reply
+                full_reply="$(cat "${reply_file}")"
+                [[ ${stream_rc} -eq 130 ]] && full_reply+=$'\n[Response cancelled by user]'
+                history_json="$(echo "${history_json}" | jq -c --arg content "${full_reply}" '. + [{"role":"assistant","content":$content}]')"
+            elif [[ ${stream_rc} -eq 130 ]]; then
+                history_json="$(echo "${history_json}" | jq -c '. + [{"role":"assistant","content":"[Response cancelled by user]"}]')"
+            fi
         fi
     done
 
-    # Kembalikan binding Tab standar sebelum kembali ke TUI
     bind '"\t": complete' 2>/dev/null || true
     enter_tui
 }
